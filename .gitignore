@@ -1,0 +1,11 @@
+.env
+.venv/
+.runtime/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+library/
+models/
+reports/*.json
+reports/*-private.md
+

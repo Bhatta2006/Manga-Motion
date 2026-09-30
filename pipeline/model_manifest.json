@@ -1,0 +1,13 @@
+{
+  "magiv3": {
+    "repo_id": "ragavsachdeva/magiv3",
+    "revision": "c9d0a345b07be759be61c5cd9570ce2df73ee80b",
+    "weight_file": "model.safetensors",
+    "weight_sha256": "922cf0a84284cfa3ddf7f487482040afce2d976c363070c5c13cccb4d62c6469",
+    "weight_bytes": 1665460218,
+    "license_note": "Model card explicitly permits personal use; older repository README says academic research only. User confirmed personal project.",
+    "install_root_env": "HF_HUB_CACHE",
+    "inference_vram_mib": null,
+    "inference_vram_note": "1.67 GB is disk weight size, not a measured GPU peak. Measure on five real pages in M0a."
+  }
+}

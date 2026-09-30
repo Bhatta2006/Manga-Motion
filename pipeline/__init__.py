@@ -1,0 +1,2 @@
+"""Offline MangaMotion processing stages."""
+
