@@ -18,9 +18,12 @@ Derived from §10 of [`docs/PRD.md`](docs/PRD.md), constrained by the hardware, 
 - **Deliverables:** D:-only Python 3.11 environment/cache configuration; Git and ignore rules; model/source verification record; adapter contract; single-model stage scheduler/telemetry; Magi detections plus raw OCR JSON for each of five pages.
 - **Files/modules:** `.gitignore`, `.env.example`, `pipeline/adapters/base.py`, `pipeline/adapters/magi.py`, `pipeline/runtime/scheduler.py`, `pipeline/runtime/metrics.py`, `pipeline/m0_detect.py`, `pipeline/requirements.lock`, `library/<series>/<chapter>/cache/{detections,ocr}.json`, `reports/M0a.md`.
 - **Tests:** adapter contract and scheduler unload/exception tests; JSON parse and page-hash cache test; compare five outputs to manually inspected page labels without claiming a full benchmark.
-- **Acceptance checklist:** [ ] official Magi docs/license/revision/runtime memory recorded before download; [ ] all installs/downloads/temp/cache on D:; [ ] five real pages each produce panel/text/OCR JSON with confidence or explicit unsupported field; [ ] no two heavy models overlap; [ ] cold and warm runs complete without OOM; [ ] peak VRAM and seconds/page recorded for every stage invoked.
+- **Acceptance checklist:** [x] official Magi docs/license/revision/runtime memory recorded before download; [x] all installs/downloads/temp/cache on D:; [x] five real pages each produce panel/text/OCR JSON with confidence or explicit unsupported field; [x] no two heavy models overlap; [x] cold and warm runs complete without OOM; [x] peak VRAM and seconds/page recorded for every stage invoked.
 - **Measurements:** per-page image dimensions/hash, stage load/run/unload time, peak allocated and device VRAM, RAM peak, cache hit rate, errors, and source/weight sizes.
 - **Known risks:** Python absent, WSL unusable, low free RAM, Magi v3 API/license/capability unverified, 5,920 MiB actual free VRAM.
+
+
+M0a checks completed on 2026-10-01; see `reports/M0a.md`. Feasibility passes, but English crop OCR quality and the ≤3 s target do not. These are documented limits, not accepted quality claims.
 
 ### M0b — Five-page playable feel prototype (≤2 days)
 

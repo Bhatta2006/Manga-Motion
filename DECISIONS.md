@@ -25,3 +25,9 @@ The exact copy at `docs/PRD.md` is the source of truth. “Proposed” below mea
 ## Verification gate for every model, repo, or API
 
 Immediately before first use, read current official README/docs/model card and license; record immutable version/revision, source URL, download/install destination on D:, expected and measured VRAM, runtime compatibility, and any API cost/data terms. Do not infer callable names or flags from the PRD. A failed license, fit, or art-fidelity check becomes a proposed change here and pauses that dependency until approved.
+
+## D18 — Real M0a feasibility and English OCR finding (2026-10-01)
+
+Measured: five-page Magi detection/crop OCR fits the 4050 at 2,145 MiB peak and 4.3879 s/page mean after load, with 5/5 cache hits on replay. Only 14/53 crops return text, including errors. Empty results are explicitly flagged; nonempty results remain unverified. A raw-output diagnostic confirms empty generation rather than an adapter decoding loss.
+
+Decision: retain Magi for detection feasibility and retain the PRD's planned specialist English OCR evaluation in M1. This is a measured limitation, not approval to introduce another model in M0a or change MotionScript. The PRD's ≤3 s/page target is unmet by this baseline. M0b must expose/flag failed lines and must not treat this OCR as reliable narration text. No new dependency or API was introduced.

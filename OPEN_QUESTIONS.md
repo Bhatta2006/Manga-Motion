@@ -5,9 +5,9 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 | ID | When needed | Question / current answer | Recommended default or next action |
 |---|---|---|---|
 | Q01 | Resolved | The user said “start with the implementation,” authorizing M0a after the Step 1 plan. | Execute M0a only, then stop for the next approval. |
-| Q02 | Before M0b model evaluation | Which 5 to 10 real manga pages form the private golden set, ideally spanning dialogue, action, and comedy? Need originals and their correct reading direction/language. | User supplies the pages; start with five for M0 and extend to ten by M1/M2. No fabricated quality scores. |
-| Q03 | Partly resolved | Official Python 3.11.9 NuGet runtime and a virtual environment run from D:. CUDA/model dependency compatibility is still under test. | Keep installs and caches on D:; verify the full Magi stack before claiming this resolved. |
-| Q04 | M0a/M0b | Do current Magi v3 weights and dependencies retain personal-use permission and fit in 5,920 MiB free VRAM with this driver? | Verify official source and model card before download. If not, propose a documented alternative in `DECISIONS.md` and wait for approval. |
+| Q02 | Resolved for M0a | Five readable supplied English/RTL pages benchmarked; mixed series, not a continuous chapter. A sixth mislabeled AVIF was preserved and excluded. | See reports/M0a.md. Use independent sample order for M0; obtain a continuous chapter for later continuity evaluation. |
+| Q03 | Resolved | D-only Python 3.11.9 and pinned Magi stack passed imports, pip check, five-page CUDA inference, and cache replay. | Keep exact lockfile and D cache routing; verify before upgrades. |
+| Q04 | Resolved for five-page sample | Verified pinned weights fit: 2,145 MiB device peak for five-page inference, 2,415 MiB for the OCR diagnostic batch. User waived licensing approval concern for personal use. | New sizes/batches/dependencies require measurement. Crop OCR quality is poor; see report. |
 | Q05 | M1 | Source language: Japanese raw, English translation, or both? | Per-series setting as in PRD; infer the first golden-set language only for initial tests, retain both as configuration. Confirm before choosing default OCR/TTS route. |
 | Q06 | M1 | Reading device: phone, tablet, or desktop first? | Phone-first responsive layout because §4 describes phone access; validate on the user's actual device when available. |
 | Q07 | M2 | Are there approved reference clips for principal voices, or should the tool generate designed voices locally? | Use designed/local voices or the user's own clips. Never clone actors or third parties without explicit rights. |
@@ -24,4 +24,4 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - Cloud scope: VLM director and selective Fish expressive lines only, subject to verified terms and configured keys.
 - Art: no generative redraw or inpainted replacements under the user's hard constraint; D05/D06 need plan approval because the PRD contains conflicting optional paths.
 - WSL2: installed command is not presently usable. Native Windows is the initial route, pending Q03.
-- No Git repository or golden images existed at Step 1, so neither commits nor quality measurements are possible yet.
+- At Step 1 there was no Git repository or golden set. Git is now initialized and five real pages have been measured; see reports/M0a.md.
