@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 
 from pipeline.adapters.magi import MagiV3Adapter
@@ -21,8 +22,8 @@ def main() -> None:
     runtime = Path(os.environ.get("MANGAMOTION_RUNTIME", ""))
     if not runtime.is_dir() or runtime.drive.upper() != "D:":
         parser.error("Dot-source scripts/enter-runtime.ps1 so all caches and temp files stay on D:")
-    if any(part in ("..", "") for part in Path(args.chapter).parts) or Path(args.chapter).is_absolute():
-        parser.error("--chapter must be a simple relative library name")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", args.chapter):
+        parser.error("--chapter must contain only letters, numbers, underscores, or hyphens")
 
     project = Path(__file__).resolve().parents[1]
     chapter_root = project / "library" / args.chapter
@@ -42,9 +43,17 @@ def main() -> None:
         page_dir = chapter_root / "cache" / f"p{index:03d}-{result['page_sha256'][:12]}"
         page_dir.mkdir(parents=True, exist_ok=True)
         for name in ("detections", "ocr"):
+            exported = result[name]
+            if name == "ocr":
+                exported = [
+                    {**item, "status": item.get("status") or (
+                        "text_returned_unverified" if any(item.get("raw", {}).get("ocr_texts", [])) else "empty_needs_review"
+                    )}
+                    for item in exported
+                ]
             with (page_dir / f"{name}.json").open("w", encoding="utf-8") as handle:
                 json.dump(
-                    {"page_sha256": result["page_sha256"], "adapter_revision": result["adapter_revision"], name: result[name]},
+                    {"page_sha256": result["page_sha256"], "adapter_revision": result["adapter_revision"], name: exported},
                     handle,
                     ensure_ascii=False,
                     indent=2,
