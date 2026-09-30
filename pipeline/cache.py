@@ -49,4 +49,3 @@ class JsonStageCache:
             handle.write("\n")
         os.replace(temp, path)
         return path
-

@@ -1,2 +1,1 @@
 """Swappable model adapters."""
-
