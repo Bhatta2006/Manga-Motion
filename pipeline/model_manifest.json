@@ -7,7 +7,41 @@
     "weight_bytes": 1665460218,
     "license_note": "Model card explicitly permits personal use; older repository README says academic research only. User confirmed personal project.",
     "install_root_env": "HF_HUB_CACHE",
-    "inference_vram_mib": null,
-    "inference_vram_note": "1.67 GB is disk weight size, not a measured GPU peak. Measure on five real pages in M0a."
+    "inference_vram_mib": 2145,
+    "inference_vram_note": "Observed sampled device peak on the five-page M0a set; not a bound for larger pages. One model at a time."
+  },
+  "baberu_ocr": {
+    "repo_id": "genshiai-daichi/baberu-ocr",
+    "revision": "d9cc13153e9a1cd8fdfa3b7b1cc329da2020aeae",
+    "license": "Apache-2.0",
+    "install_root_env": "HF_HUB_CACHE",
+    "weights": [
+      {
+        "file": "onnx/vision_fp16.onnx",
+        "bytes": 172917304,
+        "sha256": "4ce333804846b23f1983376efe363c164d4624ecc6bd16f99a15a859d8423117"
+      },
+      {
+        "file": "onnx/decoder_prefill_int8.onnx",
+        "bytes": 35133596,
+        "sha256": "4f8d28d4e5e8b6c7f3a4510663aa0a9199a7eec06bcb1dc0afb3ca571494e97f"
+      },
+      {
+        "file": "onnx/decoder_step_int8.onnx",
+        "bytes": 33929034,
+        "sha256": "2eaf792ca70b67e55140ef0bcfbfc3c3b1e07d72ca277dcc46aae27c81f27ac8"
+      }
+    ],
+    "runtime": "onnxruntime-gpu==1.20.2",
+    "vision_provider": "CUDAExecutionProvider",
+    "decoder_provider": "CPUExecutionProvider",
+    "cpu_threads": 4,
+    "intra_op_spinning": false,
+    "vision_arena_limit_mib": 512,
+    "arena_limit_note": "Limit applies only to the ORT arena, not total device usage.",
+    "measured_standalone_device_peak_mib": 355,
+    "cache_contract_version": 3,
+    "confidence_note": "Public inference returns text, not calibrated confidence.",
+    "measured_pipeline_device_peak_mib": 395
   }
 }
