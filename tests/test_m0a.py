@@ -60,6 +60,20 @@ class M0aTests(unittest.TestCase):
         self.assertEqual((adapter.loads, adapter.unloads), (1, 1))
         self.assertEqual((first["cache_hits"], second["cache_hits"]), (0, 1))
 
+    def test_detection_change_invalidates_only_its_page(self) -> None:
+        second_page = self.root / "second.bin"
+        second_page.write_bytes(b"another real page placeholder")
+        pages = [self.page, second_page]
+        hashes = [page_sha256(page) for page in pages]
+        inputs = {digest: {"detection_sha256": "original"} for digest in hashes}
+        scheduler = StageScheduler(self.root, JsonStageCache(self.root / "cache"))
+        adapter = FakeAdapter()
+        scheduler.run_pages(adapter, pages, page_configs=inputs)
+        inputs[hashes[0]] = {"detection_sha256": "corrected"}
+        _, metrics = scheduler.run_pages(adapter, pages, page_configs=inputs)
+        hits = {item["page_sha256"]: item["cache_hit"] for item in metrics["pages"]}
+        self.assertEqual(hits, {hashes[0]: False, hashes[1]: True})
+
     def test_failure_still_unloads_model_and_releases_lock(self) -> None:
         scheduler = StageScheduler(self.root, JsonStageCache(self.root / "cache"))
         bad = FakeAdapter(fail=True)
@@ -78,6 +92,19 @@ class M0aTests(unittest.TestCase):
         self.assertEqual((adapter.loads, adapter.unloads), (1, 1))
         self.assertEqual(metrics["kind"], "load_only_probe")
         self.assertNotIn("pages", metrics)
+
+    def test_source_change_during_inference_does_not_poison_cache(self) -> None:
+        class ChangingAdapter(FakeAdapter):
+            def run_page(self, page: Path) -> dict:
+                page.write_bytes(b"changed during inference")
+                return {"length": 999}
+
+        adapter = ChangingAdapter()
+        scheduler = StageScheduler(self.root, JsonStageCache(self.root / "cache"))
+        with self.assertRaisesRegex(StageExecutionError, "Source changed"):
+            scheduler.run_pages(adapter, [self.page])
+        self.assertEqual(adapter.unloads, 1)
+        self.assertFalse(list((self.root / "cache").rglob("*.json")))
 
     def test_heavy_stages_do_not_overlap(self) -> None:
         state = {"active": 0, "peak": 0}

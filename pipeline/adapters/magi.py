@@ -46,7 +46,9 @@ class MagiV3Adapter:
     revision = MODEL_REVISION
     heavy = True
 
-    def __init__(self) -> None:
+    def __init__(self, include_ocr: bool = True) -> None:
+        self.include_ocr = include_ocr
+        self.stage_name = "magiv3" if include_ocr else "magiv3-detection"
         self._model: Any = None
         self._processor: Any = None
 
@@ -96,7 +98,7 @@ class MagiV3Adapter:
 
         ocr_items = []
         ocr_seconds = 0.0
-        for index, raw_box in enumerate(detections.get("texts", [])):
+        for index, raw_box in enumerate(detections.get("texts", []) if self.include_ocr else []):
             box = _crop_box(raw_box, width, height)
             if box is None:
                 ocr_items.append({"text_index": index, "bbox": _jsonable(raw_box), "status": "invalid_box", "confidence": None})

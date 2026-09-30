@@ -158,6 +158,14 @@ def _clear_cuda_cache() -> dict[str, int | None]:
     return peaks
 
 
+def _reset_cuda_peaks() -> None:
+    """Do not carry a previous stage's allocator peak into the next stage."""
+    torch = sys.modules.get("torch")
+    if torch is not None and torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+
+
 class StageScheduler:
     def __init__(self, runtime_root: Path, cache: JsonStageCache) -> None:
         self.runtime_root = runtime_root
@@ -167,6 +175,7 @@ class StageScheduler:
         """Measure model residency without claiming any real-page inference result."""
         lock = _single_heavy_model(self.runtime_root / "scheduler.lock") if adapter.heavy else nullcontext()
         with lock:
+            _reset_cuda_peaks()
             sampler = DeviceMemorySampler()
             sampler.start()
             error: str | None = None
@@ -215,8 +224,10 @@ class StageScheduler:
             return metrics
 
     def run_pages(
-        self, adapter: PageAdapter, pages: list[Path], config: dict[str, Any] | None = None
+        self, adapter: PageAdapter, pages: list[Path], config: dict[str, Any] | None = None,
+        page_configs: dict[str, dict[str, Any]] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        stage_started = time.perf_counter()
         if not pages:
             raise ValueError("At least one real page is required")
         config = config or {}
@@ -225,7 +236,8 @@ class StageScheduler:
             if not page.is_file():
                 raise FileNotFoundError(page)
             page_hash = page_sha256(page)
-            key = cache_key(page_hash, adapter.stage_name, adapter.revision, config)
+            key_config = config if page_configs is None else {**config, "page_inputs": page_configs[page_hash]}
+            key = cache_key(page_hash, adapter.stage_name, adapter.revision, key_config)
             items.append((page, page_hash, key))
 
         outputs: list[dict[str, Any] | None] = [None] * len(items)
@@ -248,6 +260,7 @@ class StageScheduler:
             failure: Exception | None = None
             peaks: dict[str, int | None] = {"torch_peak_allocated_mib": None, "torch_peak_reserved_mib": None}
             if misses:
+                _reset_cuda_peaks()
                 sampler.start()
                 started = time.perf_counter()
                 try:
@@ -258,9 +271,11 @@ class StageScheduler:
                         started = time.perf_counter()
                         result = adapter.run_page(page)
                         run_seconds = time.perf_counter() - started
+                        if page_sha256(page) != page_hash:
+                            raise ValueError(f"Source changed during stage: {page}")
                         if not isinstance(result, dict):
                             raise TypeError("Adapter must return a JSON object")
-                        record = {"page_sha256": page_hash, "adapter_revision": adapter.revision, **result}
+                        record = {**result, "page_sha256": page_hash, "adapter_revision": adapter.revision}
                         self.cache.write(adapter.stage_name, key, record)
                         outputs[index] = record
                         page_metrics.append({"page": str(page), "page_sha256": page_hash, "cache_hit": False, "run_seconds": round(run_seconds, 4)})
@@ -297,6 +312,7 @@ class StageScheduler:
                 "process_ram_baseline_mib": sampler.process_ram_baseline_mib,
                 "process_ram_peak_mib": sampler.process_ram_peak_mib,
                 "error": error,
+                "elapsed_seconds": round(time.perf_counter() - stage_started, 4),
                 "pages": page_metrics,
                 **peaks,
             }
