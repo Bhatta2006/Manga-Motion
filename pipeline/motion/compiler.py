@@ -8,9 +8,11 @@ from pipeline.motion.rules import panel_rule, safe_transition
 from pipeline.motion.solver import rect, solve_camera
 from pipeline.motion.timing import timeline_duration, reading_budget, PANEL_TAIL_SECONDS
 from pipeline.director.validate import validate_output
+from pipeline.motion.move_table import recipe as beat_recipe, finish_motion
+from pipeline.motion.comfort import audit_timeline
 import copy
 
-REVISION = 'camera-m3a-1'
+REVISION = 'camera-m3b-2'
 
 
 def camera_record(page, labels=None):
@@ -48,25 +50,52 @@ def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
         panel = lookup[panel_id]
         texts = [t for t in record['texts'] if t['panel_id'] == panel_id]
         recipe, shot = panel_rule(index, bool(texts), len(panels) == 1)
+        tags=semantics.get(panel_id)
+        selected=beat_recipe(tags) if tags else None
+        target=None
+        if tags:
+            refs={t['id']:t['bbox'] for t in texts}
+            refs.update({c['id']:c['bbox'] for c in record.get('characters',[])})
+            for focus in tags['focus']:
+                if focus['ref'] in refs:
+                    box=refs[focus['ref']]
+                    if focus['kind']=='face' and focus['ref'].startswith('char_'):
+                        box=[box[0],box[1],box[2],box[1]+.35*(box[3]-box[1])]
+                    box=[max(box[0],panel['bbox'][0]),max(box[1],panel['bbox'][1]),min(box[2],panel['bbox'][2]),min(box[3],panel['bbox'][3])]
+                    if box[0]<box[2] and box[1]<box[3]:target=box;break
+            target=target or panel['bbox']
+            recipe=selected.move
+        motion_duration=selected.seconds if selected else duration
         # Ambiguous order keeps explicit provisional order but disables intra-panel motion.
         if record['order']['needs_review'] or panel.get('origin') != 'detected':
             recipe = 'hold'
-        event, audit = solve_camera(panel['bbox'], [t['bbox'] for t in texts], size,
-                                    recipe=recipe, duration=duration)
-        timeline = [event]
+            target=None;motion_duration=duration
+        try:
+            event, audit = solve_camera(panel['bbox'], [t['bbox'] for t in texts], size,
+                                        recipe=recipe, duration=motion_duration,focus=target,
+                                        zoom=selected.zoom if selected else 1.08,transient=bool(selected and selected.transient and recipe!='hold'))
+        except ValueError:
+            # Tight text/focus geometry may leave no comfortable moving pose.
+            event,audit=solve_camera(panel['bbox'],[t['bbox'] for t in texts],size,recipe='hold',duration=max(.8,motion_duration))
+            audit['focus_fallback']='no_safe_focused_pose'
+        if tags and event['move']!='hold':
+            if tags['beat']=='chase':event['ease']='linear'
+            elif tags['beat'] in ('reaction','impact'):event['ease']='outQuad'
+        timeline = finish_motion(event,tags,audit['protected']) if tags else [event]
+        motion_end=max(e['t']+e['dur'] for e in timeline)
         if reading_wpm is not None:
             budget = reading_budget(texts, reading_wpm)
-            hold = budget['seconds'] - PANEL_TAIL_SECONDS - duration
+            hold = budget['seconds'] - PANEL_TAIL_SECONDS - motion_end
             if hold > 1e-7:
-                timeline.append({'type':'camera', 't':duration, 'move':'hold',
-                                 'from':event['to'], 'to':event['to'], 'dur':hold, 'ease':'linear'})
+                timeline.append({'type':'camera', 't':motion_end, 'move':'hold',
+                                 'from':timeline[-1]['to'], 'to':timeline[-1]['to'], 'dur':hold, 'ease':'linear'})
             audit['reading'] = budget
         audit.update({'panel_id': panel_id, 'duration_seconds': timeline_duration(timeline),
                       'protected_texts': len(texts)})
+        audit.update(audit_timeline(timeline,audit['protected'],audit['allowed'],size,panel['bbox'][2]-panel['bbox'][0],audit['transient']))
         focus = [{'kind': 'region', 'ref': 'camera-target', 'bbox': audit['protected']}]
         focus += [{'kind': 'bubble', 'ref': t['id'], 'bbox': t['bbox']} for t in texts]
         # No claims about dialogue, mood or identity from a binary essential flag.
-        tags=semantics.get(panel_id)
         director={'beat':'quiet','shot':shot,'energy':.1,'mood':[],'time_skip':False,'focus':focus}
         if tags:
             director.update({k:tags[k] for k in ('beat','shot','energy','mood','time_skip')})
@@ -84,7 +113,11 @@ def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
     for index, panel in enumerate(result):
         if index + 1 < len(result):
             widths = [p['bbox'][2]-p['bbox'][0] for p in (panel,result[index+1])]
-            panel['transition_out'], audits[index]['transition'] = safe_transition(panel['timeline'][0], result[index+1]['timeline'][0], panel_widths=widths)
+            last_camera=[e for e in panel['timeline'] if e['type']=='camera'][-1]
+            panel['transition_out'], audits[index]['transition'] = safe_transition(last_camera, result[index+1]['timeline'][0], panel_widths=widths)
+            if panel['director']['time_skip'] or panel['director']['beat'] in ('flashback','transition'):
+                panel['transition_out']={'type':'dissolve','dur':.4}
+            if result[index+1]['director']['beat']=='impact':panel['transition_out']={'type':'cut','dur':0}
         else:
             panel['transition_out'] = {'type':'fade','dur':.2}
             audits[index]['transition'] = {'reason':'page_boundary','glide_allowed':False}

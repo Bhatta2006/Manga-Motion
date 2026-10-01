@@ -2,13 +2,15 @@ import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.
 import Ajv from 'ajv';
 import schema from '../../schema/motionscript-v1.schema.json';
 import { validateMotionScript } from './contract.js';
-import { cameraAt, clamp, ease, interpolate } from './core.js';
+import { clamp, ease, interpolate } from './core.js';
 import { fit } from './camera';
 import { SourcePlane } from './parallax';
 import { AudioTimeline } from './player';
 import type { MotionScript, Rect } from './types';
 import { setPacing, playback } from './api';
 import { FlowController } from './flow';
+import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
+import './motion.css';
 export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number}
 export async function startReader(options:ReaderOptions) {
 
@@ -24,14 +26,20 @@ document.querySelector('.brand span')!.textContent='/ '+options.title;
 if(options.library){const back=document.createElement('a');back.href='/';back.textContent='Library';back.className='library-link';document.querySelector('header')!.append(back);}
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id)! as T;
 const stage=$('stage'),status=$('status'),error=$('error');
+const motionSelect=document.createElement('select');motionSelect.id='motion';motionSelect.setAttribute('aria-label','Motion strength');
+motionSelect.innerHTML='<option value="subtle">Subtle motion</option><option value="normal" selected>Normal motion</option><option value="hype">Hype motion</option>';
+document.querySelector('.options')!.prepend(motionSelect);
+const vignette=document.createElement('div');vignette.className='scene-vignette';vignette.setAttribute('aria-hidden','true');stage.parentElement!.append(vignette);
 const app=new Application();
 const world=new Container();
+const previousWorld=new Container(),previousMask=new Graphics().rect(0,0,1,1).fill(0xffffff),effectsOverlay=new Graphics();
 const frameMask=new Graphics().rect(0,0,1,1).fill(0xffffff);
 const plane=new SourcePlane();
 const audio=new AudioTimeline(options.assetBase);
 const textures=new Map<string,Texture>();
 let script:MotionScript,index=0,ready=false,loading=false,classic=false,auto=false,reduce=false,depth=true;
 let active:Sprite|null=null,previous:Rect|null=null,navigation=0,transition=0,pageFade=false;
+let transitionKind='cut',motionPreset='normal',fxKey='',shakeActive=false;
 let renderedRect:Rect|null=null;
 let entries:{page:number;panel:number}[]=[];
 let started=performance.now(),lastFrame=0,frameTimes:number[]=[],clockErrors:number[]=[],switches=0,glides=0;
@@ -42,7 +50,7 @@ let polling=false,pollTimer=0,closed=false,processingError='';
 window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);},{once:true});
 
 function current() {const e=entries[index];return {page:script.pages[e.page],panel:script.pages[e.page].panels[e.panel]};}
-function rectNow():Rect {return cameraAt(current().panel,Math.max(0,audio.time()-transition)) as Rect;}
+function rectNow():Rect {return styledCamera(current().panel,Math.max(0,audio.time()-transition),motionPreset,reduce);}
 function updateHud() {
   const e=entries[index],{page,panel}=current();
   $('position').textContent=`Page ${e.page+1} · panel ${e.panel+1}/${page.panels.length}`;
@@ -63,6 +71,7 @@ async function show(next:number,play=false,replay=false) {
   const token=++navigation;
   const old=index;
   const oldRect=ready&&!classic?rectNow():null;
+  const oldTexture=active?.texture;
   audio.cancel();loading=true;index=next;ready=false;
   error.textContent='';status.textContent='Loading panel…';
   try {
@@ -75,6 +84,7 @@ async function show(next:number,play=false,replay=false) {
     if(token!==navigation) return;
     if(!await audio.prepare(panel)||token!==navigation) return;
     plane.destroy();active?.destroy({texture:false,textureSource:false});
+    previousWorld.removeChildren().forEach(child=>child.destroy({texture:false,textureSource:false}));
     active=new Sprite(texture);world.addChild(active);
     plane.prepare(texture,panel);if(plane.sprite)world.addChild(plane.sprite);
     // ±1 page cache; release old TextureSources explicitly. No models in reader.
@@ -85,7 +95,9 @@ async function show(next:number,play=false,replay=false) {
     if(token!==navigation)return;
     previous=oldRect&&entries[old].page===entries[next].page&&!replay?oldRect:null;
     pageFade=oldRect!==null&&entries[old].page!==entries[next].page&&!reduce;
-    transition=previous&&!reduce?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade ? .2 : 0;
+    transitionKind=previous?script.pages[entries[old].page].panels[entries[old].panel].transition_out.type:pageFade?'fade':'cut';
+    transition=previous&&!reduce&&transitionKind!=='cut'?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade ? .2 : 0;
+    if(transition&&previous&&transitionKind!=='glide'&&oldTexture)previousWorld.addChild(new Sprite(oldTexture));
     if(transition)glides++;
     ready=true;loading=false;switches++;
     flow?.sync(index);
@@ -135,6 +147,7 @@ $('speed').onchange=()=>void action(async()=>{
 });
 $('sfx').onchange=()=>{audio.sfxGain.gain.cancelScheduledValues(0);audio.sfxGain.gain.value=($('sfx') as HTMLInputElement).checked?1:0;};
 $('reduce').onchange=()=>{reduce=($('reduce') as HTMLInputElement).checked;updateHud();};
+motionSelect.onchange=()=>{motionPreset=motionSelect.value;};
 $('depth').onchange=()=>{depth=($('depth') as HTMLInputElement).checked;};
 $('classic').onclick=()=>{if(!ready)return;audio.pause();classic=!classic;$('classic').textContent=classic?'Motion view':'Original page';flow?.setEnabled(!classic&&(($('mode') as HTMLSelectElement).value==='flow'||(auto&&matchMedia('(max-width:650px)').matches)));updateHud();};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&ready){audio.pause();updateHud();}});
@@ -166,7 +179,7 @@ async function init() {
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';
   await app.init({resizeTo:stage,background:0x171d1f,preference:'webgl',powerPreference:'low-power',antialias:false,resolution:Math.min(devicePixelRatio,2),autoDensity:true});
-  stage.appendChild(app.canvas);app.stage.addChild(world,frameMask);world.mask=frameMask;
+  stage.appendChild(app.canvas);app.stage.addChild(previousWorld,previousMask,world,frameMask,effectsOverlay);world.mask=frameMask;previousWorld.mask=previousMask;
   flow=new FlowController(stage.parentElement!,entries.length,
     next=>{if(!loading&&next!==index)void action(()=>show(next,true));else flow?.sync(index);},
     ()=>{if(loading)return;audio.pause();auto=false;($('mode') as HTMLSelectElement).value='flow';void action(()=>{});updateHud();},
@@ -179,14 +192,22 @@ async function init() {
     const {page,panel}=current(),time=audio.time();
     let rect:Rect;
     if(classic)rect=[0,0,...page.size];
-    else if(reduce)rect=(panel.timeline.find(e=>e.type==='camera') as {from:Rect}).from;
-    else if(previous&&time<transition)rect=interpolate(previous,(panel.timeline.find(e=>e.type==='camera') as {from:Rect}).from,ease(time/transition,'inOutSine')) as Rect;
-    else rect=cameraAt(panel,Math.max(0,time-transition)) as Rect;
+    else if(reduce)rect=styledCamera(panel,0,motionPreset,true);
+    else if(previous&&time<transition&&transitionKind==='glide')rect=interpolate(previous,styledCamera(panel,0,motionPreset),ease(time/transition,'inOutSine')) as Rect;
+    else rect=styledCamera(panel,Math.max(0,time-transition),motionPreset);
     const frame=fit(world,rect,app.screen.width,app.screen.height);
     renderedRect=[...rect];
     frameMask.scale.set(frame.width,frame.height);
     frameMask.position.set((app.screen.width-frame.width)/2,(app.screen.height-frame.height)/2);
-    world.alpha=pageFade&&!classic&&!reduce?clamp(time/.2):1;
+    const crossfade=!!previous&&transitionKind!=='glide'&&time<transition&&!classic&&!reduce;
+    previousWorld.visible=crossfade;
+    if(crossfade&&previous){const oldFrame=fit(previousWorld,previous,app.screen.width,app.screen.height);previousMask.scale.set(oldFrame.width,oldFrame.height);previousMask.position.set((app.screen.width-oldFrame.width)/2,(app.screen.height-oldFrame.height)/2);previousWorld.alpha=1-clamp(time/transition);}
+    world.alpha=!classic&&!reduce&&(pageFade||crossfade)?clamp(time/transition):1;
+    shakeActive=!classic&&!reduce&&time>=transition&&shakeEligible(page,panel)&&protectedShake(panel,rect);
+    const fx=sceneEffects(panel,time-transition,motionPreset,reduce||classic,shakeActive);
+    world.position.x+=fx.dx*app.screen.width;world.position.y+=fx.dy*app.screen.height;
+    const nextFxKey=[app.screen.width,app.screen.height,fx.flash,fx.vignette].join(',');
+    if(nextFxKey!==fxKey){fxKey=nextFxKey;effectsOverlay.clear();if(fx.flash)effectsOverlay.rect(0,0,app.screen.width,app.screen.height).fill({color:0xffffff,alpha:fx.flash});vignette.style.opacity=String(fx.vignette*4);}
     plane.update(clamp((time-transition)/audio.duration),depth&&!reduce&&!classic);
     $('progress').style.width=((index+clamp(time/(audio.duration+transition)))/entries.length*100)+'%';
     const activeLine=panel.timeline.find(e=>e.type==='line'&&time-transition>=e.t&&time-transition<e.t+e.dur);
@@ -221,7 +242,7 @@ async function init() {
   }
   if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }
