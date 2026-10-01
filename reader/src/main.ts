@@ -1,6 +1,7 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import Ajv from 'ajv';
 import schema from '../../schema/motionscript-v1.schema.json';
+import { validateMotionScript } from './contract.js';
 import { cameraAt, clamp, ease, interpolate } from './core.js';
 import { fit } from './camera';
 import { SourcePlane } from './parallax';
@@ -26,6 +27,7 @@ const audio=new AudioTimeline();
 const textures=new Map<string,Texture>();
 let script:MotionScript,index=0,ready=false,loading=false,classic=false,auto=false,reduce=false,depth=true;
 let active:Sprite|null=null,previous:Rect|null=null,navigation=0,transition=0,pageFade=false;
+let renderedRect:Rect|null=null;
 let entries:{page:number;panel:number}[]=[];
 let started=performance.now(),lastFrame=0,frameTimes:number[]=[],clockErrors:number[]=[],switches=0,glides=0;
 const metrics={firstReadyMs:0,errors:[] as string[]};
@@ -114,8 +116,7 @@ document.addEventListener('keydown',e=>{
 async function init() {
   const response=await fetch('/chapter/motionscript.json');if(!response.ok)throw Error('Build the five-page preview first');
   const data=await response.json();const validate=new Ajv({allErrors:true}).compile(schema);
-  if(!validate(data))throw Error('Invalid MotionScript v1: '+JSON.stringify(validate.errors));
-  script=data as unknown as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+  script=validateMotionScript(data,validate) as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
   depth=script.pages.some(p=>p.panels.some(panel=>panel.director.focus.some(f=>f.ref==='parallax-safe')));
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';
@@ -132,6 +133,7 @@ async function init() {
     else if(previous&&time<transition)rect=interpolate(previous,(panel.timeline.find(e=>e.type==='camera') as {from:Rect}).from,ease(time/transition,'inOutSine')) as Rect;
     else rect=cameraAt(panel,Math.max(0,time-transition)) as Rect;
     const frame=fit(world,rect,app.screen.width,app.screen.height);
+    renderedRect=[...rect];
     frameMask.scale.set(frame.width,frame.height);
     frameMask.position.set((app.screen.width-frame.width)/2,(app.screen.height-frame.height)/2);
     world.alpha=pageFade&&!classic&&!reduce?clamp(time/.2):1;
@@ -145,6 +147,6 @@ async function init() {
   });
   await show(0);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
