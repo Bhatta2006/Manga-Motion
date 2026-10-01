@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
@@ -15,9 +16,15 @@ from pipeline.api.chapters import library_entries, playback_info, read_snapshot,
 from pipeline.api.jobs import router
 from pipeline.db import Jobs
 from pipeline.store import ChapterStore
+from pipeline.build_motion import build_motion
 from pipeline.worker import WorkerCoordinator
 
 PROJECT = Path(__file__).resolve().parents[2]
+
+
+class PacingRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    reading_wpm: int = Field(ge=80, le=600)
 
 
 def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=True, dist=None):
@@ -72,6 +79,17 @@ def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=
     def playback(series: str, chapter: str):
         try: return playback_info(chapter_store(series,chapter))
         except (ValueError,OSError,KeyError,TypeError) as exc: raise HTTPException(409,str(exc)) from exc
+
+    @app.post('/api/chapters/{series}/{chapter}/pacing')
+    def pacing(series: str, chapter: str, request: PacingRequest):
+        if any(j['status'] in ('queued','running') for j in jobs.list()):
+            raise HTTPException(409,'Wait for current processing to finish before changing reading speed')
+        store = chapter_store(series,chapter)
+        try:
+            _, metrics = build_motion(library,series,chapter,runtime,reading_wpm=request.reading_wpm,persist_rate=True)
+            return {**playback_info(store), 'elapsed_seconds':metrics['elapsed_seconds']}
+        except (ValueError,OSError,KeyError,TypeError) as exc:
+            raise HTTPException(409,str(exc)) from exc
 
     @app.get('/api/chapters/{series}/{chapter}/playback/{digest}/motionscript.json')
     def script(series: str, chapter: str, digest: str):

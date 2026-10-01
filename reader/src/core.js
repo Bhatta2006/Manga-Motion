@@ -15,7 +15,7 @@ export function cameraAt(panel,time) {
   return rect;
 }
 export function durationOf(panel, clipDurations = {}) {
-  return Math.max(...panel.timeline.map(e=>e.t+(e.type==='camera'||e.type==='line'?e.dur:(clipDurations[e.file]??0))),.8)+.4;
+  return Math.max(...panel.timeline.filter(e=>e.type!=='music'&&e.type!=='ambience').map(e=>e.t+(e.type==='line'?Math.max(e.dur,clipDurations[e.audio]??0):e.type==='camera'?e.dur:(clipDurations[e.file]??0))),.8)+.4;
 }
 export function poseOf(box,phase) {
   return {scale:1.02,dx:Math.sin(phase*Math.PI*2)*(box[2]-box[0])*.004,dy:Math.sin(phase*Math.PI)*(box[3]-box[1])*.004};

@@ -82,3 +82,9 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
   follows from the count; actual-device/quality evaluation gates remain.
 - This feedback is not treated as approval to begin a later milestone. M1e is
   next, under the user's original one-milestone-at-a-time approval instruction.
+
+## Continuation and evaluation inputs (2026-10-02)
+
+- Resolved: user authorizes all remaining milestones without intermediate approval; explicit approval remains required for MotionScript changes.
+- Requested asynchronously: target phone/browser and a continuous chapter/volume for final mobile, story-continuity and full-volume evidence. Existing five pages remain available for implementation and bounded regression checks.
+- M1e technical timing is implemented. User reading comfort remains pending; automatic dialogue/SFX/caption classification is not established by provisional golden annotations.

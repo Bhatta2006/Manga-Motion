@@ -1,13 +1,13 @@
 # MangaMotion implementation milestones
 
-Derived from §10 of [`docs/PRD.md`](docs/PRD.md), constrained by the hardware, art-fidelity, contract, and approval rules in the user request. Each lettered slice is intended to be at most about two working days and is **one execution/approval gate**. Do not begin the next slice until the user replies “approved.” The first execution slice is **M0a**, after Step 1 plan approval and the required real pages are available.
+Derived from §10 of [`docs/PRD.md`](docs/PRD.md), constrained by the hardware, art-fidelity and contract rules in the user request. Each lettered slice is intended to be at most about two working days. **On 2026-10-02 the user explicitly authorized continuing through all remaining milestones without intermediate approval. Contract changes still require a concrete proposal and explicit approval.** Historical stop instructions below describe earlier gates and are superseded by this authorization. Each slice retains tests, measurements, reports and small commits.
 
 ## Rules applying to every slice
 
 - Before using a model, repository, or API, inspect current official docs/README/model card and license; record pinned revision, install path on D:, expected memory, measured memory, and API terms if relevant in `reports/<slice>.md`. Do not invent flags or functions. If a claimed fit/license/API capability fails verification, propose a change in `DECISIONS.md` and pause that dependency for approval.
 - Use one heavy model at a time through the stage scheduler. Each stage loads, runs, unloads, clears the CUDA cache, and records peak VRAM and elapsed seconds per page. CPU/cloud stages record 0 GPU VRAM and latency; voice/SFX stages also record seconds per line/clip. Cache stage output by source-page SHA-256 plus input/config/model version hashes; record cold and warm cache behavior.
 - Preserve original source assets; any served derivative must meet the D05 pixel-identity gate. Keep `/pipeline`, `/reader`, `/schema`, and `/library`. MotionScript v1 (§6) is the only pipeline/reader contract unless the user approves a version bump.
-- Write focused tests and use only real user-supplied golden pages for quality claims. End each slice with `reports/<slice>.md`: exact commands/outputs for each acceptance item, metrics with hardware/input context, deviations, risks, and commits. A subjective user acceptance item is pending until the user actually judges it. Stop after the report.
+- Write focused tests and use only real user-supplied golden pages for quality claims. End each slice with `reports/<slice>.md`: exact commands/outputs for each acceptance item, metrics with hardware/input context, deviations, risks, and commits. A subjective user acceptance item is pending until the user actually judges it. Continue to the next independent slice under the latest authorization.
 - Pin dependencies in `pipeline/requirements.lock` and `reader/package-lock.json` (or equivalent exact lockfiles) when introduced. Keep downloaded models, `.env`, chapter contents, and private audio out of Git. M0a initializes Git because none exists now.
 
 ## Final-product additions and execution priorities
@@ -97,11 +97,13 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1e — Reading-aware Auto pacing (≤2 days)
 
+**Status:** implemented with automated evidence in `reports/M1e.md`. Real reading comfort remains pending; private golden class labels are provisional engineer annotations, not automatic classification proof.
+
 - **Goal:** meet F04 independently of speech generation.
 - **Deliverables:** dialogue/caption-only reading budget, adjustable initial English 240 wpm plus art/beat time, no truncating upper cap, conservative OCR-error fallback, audio-clock silent dwell and end-frame holds. Future dialogue audio can extend dwell; music cannot.
 - **Files/modules:** `pipeline/motion/{timing.py,serialize.py}`, `reader/src/{player.ts,pacing-settings.ts}`, `tests/test_timing.py`, `reports/M1e.md`.
 - **Tests:** monotonic 0/10/40/100-word timing; exclusion of SFX/notes; sparse/dense real panels; failed versus truly empty OCR; reading-rate scaling; future speech lower bound; long music cannot extend dwell.
-- **Acceptance checklist:** [ ] more text gives more time under identical conditions; [ ] dense panels exceed 12 s when required; [ ] only dialogue/captions count; [ ] OCR failures flagged with conservative timing; [ ] audio clock preserved; [ ] user can read real dense panels without routine pauses.
+- **Acceptance checklist:** [x] more text gives more time under identical conditions; [x] dense panels exceed 12 s when required; [x] only confirmed dialogue/captions count (unknown text has a separate flagged estimate); [x] OCR failures flagged with conservative timing; [x] audio clock preserved; [ ] user can read real dense panels without routine pauses.
 - **Measurements:** words/types per panel, estimated/read-observed dwell, forced pauses/skips, computation seconds/page, VRAM/RAM, cache identity including rate/settings.
 - **Known risks:** prose speed is not manga speed; visual complexity/language and OCR quality need calibration.
 
@@ -320,4 +322,4 @@ scope including streaming and later side-space polish; **4** voice slices (M2a�
 remain deferred, not removed. The 17 comprise M1e–g (3), M3a–d3 (6), M4a–c2 (4)
 and M5a–d (4). These are counts, not a completion-date estimate. Outstanding real
 device/independent quality acceptance from completed foundations also remains.
-Each slice retains its approval gate; next implementation is M1e.
+Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval. After M1e, 20 implementation slices remain, plus outstanding subjective/device evaluations.

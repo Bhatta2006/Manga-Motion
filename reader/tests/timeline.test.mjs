@@ -35,6 +35,11 @@ test('audible clock compensates output latency and rejects stale stamps',()=>{
   assert.equal(outputTime({currentTime:5,getOutputTimestamp:()=>({contextTime:4.9,performanceTime:1000})},1020),4.92);
   assert.ok(Math.abs(outputTime({currentTime:5,baseLatency:.01,outputLatency:.02,getOutputTimestamp:()=>({contextTime:1,performanceTime:0})},1020)-4.97)<1e-8);
 });
+test('decoded voice extends dwell while music never sets the reading timer',()=>{
+  const panel={timeline:[{type:'camera',t:0,dur:2},{type:'line',t:1,dur:3,audio:'audio/a.wav'}]};
+  assert.equal(durationOf(panel,{'audio/a.wav':10}),11.4);
+  panel.timeline.push({type:'music',t:0,dur:600});assert.equal(durationOf(panel,{'audio/a.wav':10}),11.4);
+});
 test('parallax poses always cover original source rectangle',()=>{
   const box=[10,10,210,110];
   for(let i=0;i<=100;i++){

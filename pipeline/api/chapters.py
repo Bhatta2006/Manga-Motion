@@ -68,8 +68,11 @@ def playback_info(store):
     digest, record = snapshot(store)
     base = f'/api/chapters/{store.series}/{store.chapter}/playback/{digest}'
     script = record['script']
+    audit = read_json(store.asset('cache/camera-audit.json')) or {}
+    rate = audit.get('reading_wpm') if audit.get('script_hash') == digest else None
     return {'snapshot': digest, 'script_url': base+'/motionscript.json', 'asset_base': base+'/assets/',
-            'pages': len(script['pages']), 'panels': sum(len(p['panels']) for p in script['pages'])}
+            'pages': len(script['pages']), 'panels': sum(len(p['panels']) for p in script['pages']),
+            'reading_wpm':rate}
 
 
 def asset_response(store, digest, relative):

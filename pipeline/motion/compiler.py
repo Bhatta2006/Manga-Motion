@@ -6,12 +6,12 @@ from pipeline.cache import JsonStageCache, page_sha256
 from pipeline.ingest.hashes import object_hash
 from pipeline.motion.rules import panel_rule, safe_transition
 from pipeline.motion.solver import rect, solve_camera
-from pipeline.motion.timing import timeline_duration
+from pipeline.motion.timing import timeline_duration, reading_budget, PANEL_TAIL_SECONDS
 
-REVISION = 'camera-m1c-4'
+REVISION = 'camera-m1e-1'
 
 
-def compile_page(record: dict, *, duration=2.0) -> dict:
+def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
     size = record['size']
     panels = record['panels']
     ids = [p['id'] for p in panels]
@@ -36,7 +36,15 @@ def compile_page(record: dict, *, duration=2.0) -> dict:
             recipe = 'hold'
         event, audit = solve_camera(panel['bbox'], [t['bbox'] for t in texts], size,
                                     recipe=recipe, duration=duration)
-        audit.update({'panel_id': panel_id, 'duration_seconds': timeline_duration([event]),
+        timeline = [event]
+        if reading_wpm is not None:
+            budget = reading_budget(texts, reading_wpm)
+            hold = budget['seconds'] - PANEL_TAIL_SECONDS - duration
+            if hold > 1e-7:
+                timeline.append({'type':'camera', 't':duration, 'move':'hold',
+                                 'from':event['to'], 'to':event['to'], 'dur':hold, 'ease':'linear'})
+            audit['reading'] = budget
+        audit.update({'panel_id': panel_id, 'duration_seconds': timeline_duration(timeline),
                       'protected_texts': len(texts)})
         focus = [{'kind': 'region', 'ref': 'camera-target', 'bbox': audit['protected']}]
         focus += [{'kind': 'bubble', 'ref': t['id'], 'bbox': t['bbox']} for t in texts]
@@ -44,7 +52,7 @@ def compile_page(record: dict, *, duration=2.0) -> dict:
         result.append({'id': panel_id, 'bbox': panel['bbox'],
                        'director': {'beat': 'quiet', 'shot': shot, 'energy': .1, 'mood': [],
                                     'time_skip': False, 'focus': focus},
-                       'timeline': [event], 'transition_out': {'type': 'glide', 'dur': .32},
+                       'timeline': timeline, 'transition_out': {'type': 'glide', 'dur': .32},
                        'confidence': {'panel': None, 'ocr': None, 'speaker': None}})
         audits.append(audit)
     for index, panel in enumerate(result):
@@ -89,11 +97,12 @@ class CameraAdapter:
     revision = REVISION
     heavy = False
 
-    def __init__(self, records, duration=2.0):
+    def __init__(self, records, duration=2.0, reading_wpm=None):
         self.records, self.duration = records, duration
+        self.reading_wpm = reading_wpm
 
     def load(self): pass
     def unload(self): pass
 
     def run_page(self, page):
-        return compile_page(self.records[page_sha256(page)], duration=self.duration)
+        return compile_page(self.records[page_sha256(page)], duration=self.duration, reading_wpm=self.reading_wpm)

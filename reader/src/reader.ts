@@ -7,7 +7,8 @@ import { fit } from './camera';
 import { SourcePlane } from './parallax';
 import { AudioTimeline } from './player';
 import type { MotionScript, Rect } from './types';
-export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean}
+import { setPacing } from './api';
+export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null}
 export async function startReader(options:ReaderOptions) {
 
 document.querySelector('#app')!.innerHTML=`
@@ -15,7 +16,7 @@ document.querySelector('#app')!.innerHTML=`
 <main><div class="stage-wrap"><div id="stage" role="button" tabindex="0" aria-label="Advance to next panel"></div><div id="caption"></div><div id="hint">Press Play to begin · tap the art to advance</div></div></main>
 <footer><div class="progress"><span id="progress"></span></div><div class="transport"><div class="controls">
 <button id="prev" aria-label="Previous panel">←</button><button id="play" class="primary">Play</button><button id="next" aria-label="Next panel">→</button><button id="replay" aria-label="Replay panel">↻</button><span id="position"></span>
-</div><div class="options"><select id="mode" aria-label="Playback mode"><option value="tap">Tap paced</option><option value="auto">Auto play</option></select><button id="classic">Original page</button><label><input id="sfx" type="checkbox" checked>SFX</label><label><input id="reduce" type="checkbox">Reduce motion</label><label><input id="depth" type="checkbox" checked>Parallax</label></div></div>
+</div><div class="options"><select id="mode" aria-label="Playback mode"><option value="tap">Tap paced</option><option value="auto">Auto play</option></select><label id="speed-wrap">Reading speed <select id="speed" aria-label="Reading speed"><option value="160">Slow · 160 wpm</option><option value="240">Average · 240 wpm</option><option value="320">Fast · 320 wpm</option></select></label><button id="classic">Original page</button><label><input id="sfx" type="checkbox" checked>SFX</label><label><input id="reduce" type="checkbox">Reduce motion</label><label><input id="depth" type="checkbox" checked>Parallax</label></div></div>
 <div class="note"><span id="status">Loading pages…</span><span id="error" role="status"></span></div></footer>`;
 
 document.querySelector('.brand span')!.textContent='/ '+options.title;
@@ -104,6 +105,23 @@ $('replay').onclick=()=>void action(()=>show(index,true,true));
 stage.onclick=()=>void action(()=>advance(1));
 stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>advance(1));}};
 $('mode').onchange=()=>{auto=($('mode') as HTMLSelectElement).value==='auto';if(auto&&!audio.playing)void action(togglePlay);};
+$('speed').onchange=()=>void action(async()=>{
+  if(!options.series||!options.chapter)return;
+  const control=$('speed') as HTMLSelectElement;
+  audio.pause();updateHud();control.disabled=true;status.textContent='Updating reading time…';
+  try {
+    const info=await setPacing(options.series,options.chapter,Number(control.value));
+    const response=await fetch(info.script_url);if(!response.ok)throw Error('New timing is unavailable');
+    const data=await response.json();
+    const next=validateMotionScript(data,new Ajv({allErrors:true}).compile(schema)) as MotionScript;
+    if(JSON.stringify(next.pages.map(p=>[p.id,p.image,p.size,p.panels.map(q=>q.id)]))!==JSON.stringify(script.pages.map(p=>[p.id,p.image,p.size,p.panels.map(q=>q.id)])))throw Error('Chapter changed; reopen it from Library');
+    script=next;options.scriptUrl=info.script_url;options.readingWpm=info.reading_wpm;
+    // Original assets are immutable; existing textures remain valid, audio's
+    // snapshot is unchanged because pacing introduces no new audio assets.
+    await show(index,false,true);
+  }catch(e){error.textContent=String(e);control.value=String(options.readingWpm??240);}
+  finally{control.disabled=false;}
+});
 $('sfx').onchange=()=>{audio.sfxGain.gain.cancelScheduledValues(0);audio.sfxGain.gain.value=($('sfx') as HTMLInputElement).checked?1:0;};
 $('reduce').onchange=()=>{reduce=($('reduce') as HTMLInputElement).checked;updateHud();};
 $('depth').onchange=()=>{depth=($('depth') as HTMLInputElement).checked;};
@@ -127,7 +145,11 @@ async function init() {
   sfxControl.disabled=!hasSfx;sfxControl.checked=hasSfx;
   sfxControl.parentElement!.title=hasSfx?'Play this chapter’s sound effects':'This chapter has no sound effects yet';
   if(!hasSfx){sfxControl.parentElement!.lastChild!.textContent='No SFX';audio.sfxGain.gain.value=0;}
-  ($('mode') as HTMLSelectElement).options[1].textContent='Auto (preview)';
+  ($('mode') as HTMLSelectElement).options[1].textContent=options.readingWpm?'Auto':'Auto (preview)';
+  $('speed-wrap').hidden=!options.series;
+  const speed=$('speed') as HTMLSelectElement;
+  if(options.readingWpm&&!Array.from(speed.options).some(o=>o.value===String(options.readingWpm)))speed.add(new Option(`${options.readingWpm} wpm`,String(options.readingWpm)));
+  speed.value=String(options.readingWpm??240);
   depth=script.pages.some(p=>p.panels.some(panel=>panel.director.focus.some(f=>f.ref==='parallax-safe')));
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';

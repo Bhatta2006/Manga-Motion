@@ -44,9 +44,10 @@ export class AudioTimeline {
     this.playing=true;
     const length=this.duration+transition;
     // A silent buffer keeps a genuine output-device clock even on silent panels.
-    const silent=this.context.createBuffer(1,Math.ceil(length*this.context.sampleRate),this.context.sampleRate);
-    const carrier=this.context.createBufferSource();carrier.buffer=silent;carrier.connect(this.context.destination);
-    carrier.start(this.context.currentTime+.02,this.offset);this.sources.push(carrier);
+    const silent=this.context.createBuffer(1,this.context.sampleRate,this.context.sampleRate);
+    const carrier=this.context.createBufferSource();carrier.buffer=silent;carrier.loop=true;carrier.connect(this.context.destination);
+    carrier.start(this.context.currentTime+.02);
+    carrier.stop(this.context.currentTime+.02+Math.max(0,length-this.offset));this.sources.push(carrier);
     for(const event of panel.timeline) {
       if(event.type==='camera') continue;
       const buffer=this.clips.get(event.type==='line'?event.audio:event.file);

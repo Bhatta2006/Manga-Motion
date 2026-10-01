@@ -14,13 +14,15 @@ from pipeline.cache import page_sha256
 from pipeline.ingest import ImportFailure
 from pipeline.ingest.hashes import object_hash
 from pipeline.motion.compiler import CameraAdapter, VerifiedCameraCache
+from pipeline.motion.pacing import configured_rate, pacing_labels
+from pipeline.motion.timing import reading_rate, PACING_REVISION
 from pipeline.motion.serialize import validate_contract
 from pipeline.runtime.scheduler import StageScheduler, StageExecutionError
 from pipeline.store import ChapterStore, read_json, write_json
 
 
 def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, duration=2.0,
-                 validator=validate_contract, progress=None) -> tuple[dict, dict]:
+                 validator=validate_contract, progress=None, reading_wpm=None, persist_rate=False) -> tuple[dict, dict]:
     store = ChapterStore(library, series, chapter)
     if runtime.resolve().drive.upper() != 'D:' or not runtime.is_dir():
         raise ImportFailure('Dot-source scripts/enter-runtime.ps1; runtime must exist on D:')
@@ -36,7 +38,9 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             raise ImportFailure('Analysis is stale for this import/settings; rerun M1b')
         if len(analysis['pages']) != len(manifest['pages']):
             raise ImportFailure('Analysis/import page count mismatch')
-        input_snapshot = (object_hash(manifest), object_hash(analysis))
+        rate = configured_rate(store) if reading_wpm is None else reading_rate(reading_wpm)
+        labels = pacing_labels(store, analysis)
+        input_snapshot = (object_hash(manifest), object_hash(analysis), object_hash(labels))
         records, unique = {}, {}
         for entry, page in zip(manifest['pages'], analysis['pages']):
             if any(page.get(k) != entry[k] for k in ('id', 'image', 'page_sha256', 'size')):
@@ -44,8 +48,11 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             asset = store.asset(page['image'])
             if not asset.is_file() or page_sha256(asset) != page['page_sha256']:
                 raise ImportFailure(f'Imported art changed or missing: {entry["id"]}')
-            record = {k: page[k] for k in ('size', 'panels', 'order', 'texts', 'review')}
+            record = copy.deepcopy({k: page[k] for k in ('size', 'panels', 'order', 'texts', 'review')})
             digest = page['page_sha256']
+            for text in record['texts']:
+                if text['id'] in labels.get(digest, {}):
+                    text['kind'] = labels[digest][text['id']]
             if digest in records and records[digest] != record:
                 raise ImportFailure('Repeated page hash has inconsistent analysis')
             records[digest], unique[digest] = record, asset
@@ -53,8 +60,8 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             raise ImportFailure('Chapter contains no pages')
         dependencies = {h: {'analysis_sha256': object_hash(r)} for h, r in records.items()}
         scheduler = StageScheduler(runtime, VerifiedCameraCache(store.asset('cache/stages')))
-        outputs, stage = scheduler.run_pages(CameraAdapter(records, duration), list(unique.values()),
-                                            config={'duration': duration}, page_configs=dependencies, progress=progress)
+        outputs, stage = scheduler.run_pages(CameraAdapter(records, duration, rate), list(unique.values()),
+                                            config={'duration': duration, 'reading_wpm':rate, 'pacing_revision':PACING_REVISION}, page_configs=dependencies, progress=progress)
         mapped = dict(zip(unique, outputs))
         script = {'version': 1, 'chapter': f'{series}/{chapter}', 'direction': analysis['direction'],
                   'characters': {}, 'pages': []}
@@ -73,14 +80,17 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         validation_started = time.perf_counter()
         validation = validator(script)
         validation_seconds = time.perf_counter() - validation_started
-        if input_snapshot != (object_hash(read_json(store.asset('import.json'))), object_hash(read_json(store.asset('analysis.json')))):
+        if input_snapshot != (object_hash(read_json(store.asset('import.json'))), object_hash(read_json(store.asset('analysis.json'))), object_hash(pacing_labels(store, analysis))):
             raise ImportFailure('Import/analysis changed during compilation; retry with current inputs')
         for digest, asset in unique.items():
             if page_sha256(asset) != digest:
                 raise ImportFailure(f'Source changed during compilation: {asset.name}')
         # No partial contract is published; previous valid output survives any failure above.
-        write_json(store.asset('cache/camera-audit.json'), {'revision': CameraAdapter.revision, 'pages': audits})
+        write_json(store.asset('cache/camera-audit.json'), {'revision': CameraAdapter.revision, 'pages': audits,
+                   'reading_wpm':rate, 'script_hash':object_hash(script)})
         write_json(store.asset('motionscript.json'), script)
+        if persist_rate:
+            write_json(store.checked(store.series_root/'pacing.json'), {'reading_wpm':rate})
         metrics = {'stage': stage, 'validation': validation, 'validation_seconds': round(validation_seconds, 6),
                    'elapsed_seconds': round(time.perf_counter() - started, 6), 'pages_total': len(script['pages']),
                    'panels_total': sum(len(p['panels']) for p in script['pages']),

@@ -134,3 +134,11 @@ is not implemented or waived**. First-page readiness is measured as complete
 chapter readiness; streaming needs an approved follow-up slice before final
 acceptance. Do not call the current reader a streaming reader. No new voice,
 semantic SFX, tonal music, depth or reading-aware Auto feature is claimed.
+
+## D30 — All-milestone continuation and v1 reading holds (2026-10-02)
+
+The user explicitly answered: “Continue through all milestones; keep contract-change approval.” This supersedes per-slice stop requirements. Continue implementation with individual evidence/reports/commits; do not claim subjective or actual-device gates without user measurements. A new MotionScript version still needs approval before implementation.
+
+Compile reading time as existing v1 end-frame camera holds. English defaults to adjustable 240 wpm, plus 2 s art time and 0.4 s tail, without an upper cap. Known dialogue/caption labels contribute confirmed words; known SFX/sign/nonverbal/watermark/translator-note labels are excluded. Unknown essential text receives a separate estimated-word budget and uncertainty margin, not an asserted class. Empty failed crops receive a conservative minimum. Private page-hash/text-ID labels from the existing provisional golden reference demonstrate filtering on the five pages; general classification remains M3a work.
+
+Changing reading speed recompiles CPU-only camera timing and preserves immutable playback snapshots. Per-series settings and page-hash/config caches include the rate and label inputs. The reader does not depend on a pacing sidecar to interpret timing: v1 contains complete holds. Decoded future voice duration extends the audio-clock lower bound; music is excluded. A one-second looping silent buffer keeps long dwell memory bounded, using verified Web Audio loop/stop APIs. No new model, dependency, cloud call or schema change.

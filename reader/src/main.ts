@@ -7,7 +7,7 @@ async function boot(){
   if(series&&chapter){
     const info=await playback(series,chapter);
     const {startReader}=await import('./reader');
-    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:`${series} / ${chapter}`,library:true});return;
+    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm});return;
   }
   const health=await fetch('/api/health');
   if(health.status===404){

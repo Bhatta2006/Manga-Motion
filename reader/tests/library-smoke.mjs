@@ -23,7 +23,7 @@ try{
     assert.equal((await diag()).panels,25);const visited=[];
     assert.equal(await page.locator('#sfx').isDisabled(),true);
     assert.equal(await page.locator('#sfx').isChecked(),false);
-    assert.ok((await page.locator('#mode').textContent()).includes('Auto (preview)'));
+    assert.equal(await page.locator('#mode option[value=auto]').textContent(),'Auto');
     for(let index=0;index<25;index++){
       if(index){await page.locator('#stage').click({position:{x:15,y:40}});await ready();}
       await page.waitForFunction(i=>window.mangaMotionDiagnostics?.index===i&&window.mangaMotionDiagnostics?.renderedRect?.every(Number.isFinite),index);
