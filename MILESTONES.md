@@ -181,9 +181,11 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Deliverables:** schema-constrained director adapter, one-page calls with continuity summary, cached intermediate JSON, local fallback interface.
 - **Files/modules:** `pipeline/adapters/{director_base.py,director_cloud.py,director_local.py}`, `pipeline/director/{prompt.py,validate.py,cache.py}`, `library/<series>/<chapter>/cache/director.json`, `reports/M3a.md`.
 - **Tests:** schema/ID validation, deterministic cache key, malformed-response retry/flag, no key or full chapter payload in logs, continuity cases.
-- **Acceptance checklist:** [ ] every golden page yields valid semantic records tied to existing IDs; [ ] no generated coordinates replace detector boxes; [ ] cloud calls occur only through a configured, permitted provider; [ ] unresolved output is flagged; [ ] one heavy model at a time.
+- **Acceptance checklist:** [x] every golden page yields valid semantic records tied to existing IDs; [x] no generated coordinates replace detector boxes; [x] cloud calls occur only through a configured, permitted provider; [x] unresolved output is flagged; [x] one heavy model at a time.
 - **Measurements:** requests/page, latency/page, API tokens/cost, cache hits, local fallback seconds/page and VRAM/RAM peak, invalid-output rate.
 - **Known risks:** provider pricing/privacy or schema behavior may have changed; local VLM may not fit or may reduce quality.
+
+M3a engineering checks completed; semantic accuracy remains explicitly unverified. See `reports/M3a.md`.
 
 ### M3b — Full move table and comfort controls (≤2 days)
 
@@ -326,4 +328,4 @@ scope including streaming and later side-space polish; **4** voice slices (M2a�
 remain deferred, not removed. The 17 comprise M1e–g (3), M3a–d3 (6), M4a–c2 (4)
 and M5a–d (4). These are counts, not a completion-date estimate. Outstanding real
 device/independent quality acceptance from completed foundations also remains.
-Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval. After M1e, 20 implementation slices remain, plus outstanding subjective/device evaluations.
+Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval. After M1e–g and M3a, 17 implementation slices remain, plus outstanding subjective/device evaluations.

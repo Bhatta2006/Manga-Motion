@@ -50,6 +50,15 @@ class StreamingTests(unittest.TestCase):
         write_json(self.store.asset('cache/stream-playback.json'),damaged)
         self.assertIsNone(streaming_record(self.store))
 
+    def test_new_job_does_not_retain_previous_job_prefix(self):
+        first=StreamingPublisher(self.store,self.manifest,job_id='old-job')
+        for page in self.analysis['pages'][:2]:first.publish(page)
+        self.assertIsNone(streaming_record(self.store,'new-job'))
+        newer=StreamingPublisher(self.store,self.manifest,job_id='new-job')
+        self.assertIsNone(newer.retained)
+        newer.publish(self.analysis['pages'][0])
+        self.assertEqual(streaming_record(self.store,'new-job')['ready_pages'],1)
+
     def test_changed_source_and_import_rejected(self):
         publisher=StreamingPublisher(self.store,self.manifest)
         page=self.analysis['pages'][0];self.store.asset(page['image']).write_bytes(b'changed')

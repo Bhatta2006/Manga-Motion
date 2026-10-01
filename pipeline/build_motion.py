@@ -13,9 +13,10 @@ from pathlib import Path
 from pipeline.cache import page_sha256
 from pipeline.ingest import ImportFailure
 from pipeline.ingest.hashes import object_hash
-from pipeline.motion.compiler import CameraAdapter, VerifiedCameraCache
+from pipeline.motion.compiler import CameraAdapter, VerifiedCameraCache, camera_record
 from pipeline.motion.pacing import configured_rate, pacing_labels
 from pipeline.motion.timing import reading_rate, PACING_REVISION
+from pipeline.director.settings import series_notes
 from pipeline.motion.serialize import validate_contract
 from pipeline.runtime.scheduler import StageScheduler, StageExecutionError
 from pipeline.store import ChapterStore, read_json, write_json
@@ -40,7 +41,13 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             raise ImportFailure('Analysis/import page count mismatch')
         rate = configured_rate(store) if reading_wpm is None else reading_rate(reading_wpm)
         labels = pacing_labels(store, analysis)
-        input_snapshot = (object_hash(manifest), object_hash(analysis), object_hash(labels))
+        directed=read_json(store.asset('cache/director.json'))
+        if directed and directed.get('analysis_sha256')!=object_hash(analysis):raise ImportFailure('Director is stale for this analysis; rerun processing')
+        if directed and directed.get('notes_sha256') not in (None,object_hash(series_notes(store))):raise ImportFailure('Director notes changed; rerun processing')
+        directed_pages={p['page_sha256']:p for p in (directed or {}).get('pages',[])}
+        if directed is not None and set(directed_pages)!={p['page_sha256'] for p in analysis['pages']}:
+            raise ImportFailure('Director page coverage is incomplete; rerun processing')
+        input_snapshot = (object_hash(manifest), object_hash(analysis), object_hash(labels),object_hash(directed))
         records, unique = {}, {}
         for entry, page in zip(manifest['pages'], analysis['pages']):
             if any(page.get(k) != entry[k] for k in ('id', 'image', 'page_sha256', 'size')):
@@ -48,11 +55,8 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             asset = store.asset(page['image'])
             if not asset.is_file() or page_sha256(asset) != page['page_sha256']:
                 raise ImportFailure(f'Imported art changed or missing: {entry["id"]}')
-            record = copy.deepcopy({k: page[k] for k in ('size', 'panels', 'order', 'texts', 'review')})
             digest = page['page_sha256']
-            for text in record['texts']:
-                if text['id'] in labels.get(digest, {}):
-                    text['kind'] = labels[digest][text['id']]
+            record = camera_record({**page,**directed_pages.get(digest,{})},labels.get(digest,{}))
             if digest in records and records[digest] != record:
                 raise ImportFailure('Repeated page hash has inconsistent analysis')
             records[digest], unique[digest] = record, asset
@@ -80,7 +84,7 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         validation_started = time.perf_counter()
         validation = validator(script)
         validation_seconds = time.perf_counter() - validation_started
-        if input_snapshot != (object_hash(read_json(store.asset('import.json'))), object_hash(read_json(store.asset('analysis.json'))), object_hash(pacing_labels(store, analysis))):
+        if input_snapshot != (object_hash(read_json(store.asset('import.json'))), object_hash(read_json(store.asset('analysis.json'))), object_hash(pacing_labels(store, analysis)),object_hash(read_json(store.asset('cache/director.json')))):
             raise ImportFailure('Import/analysis changed during compilation; retry with current inputs')
         for digest, asset in unique.items():
             if page_sha256(asset) != digest:

@@ -12,6 +12,8 @@ From PowerShell in `D:\Motion Manga`:
 ```powershell
 . .\scripts\enter-runtime.ps1
 npm run build --prefix reader
+# Once, before the first semantic analysis (downloads only to D:):
+.\scripts\install-director.ps1
 & .\.venv\Scripts\python.exe -m pipeline.api.app --port 5174
 ```
 
@@ -19,13 +21,16 @@ Open <http://127.0.0.1:5174/>. Choose **Import a chapter**, enter a D-drive fold
 CBZ/ZIP or PDF path, a series/chapter identifier, and reading direction. English
 OCR is the verified route. The Library shows processing stages and any failure;
 **Retry processing** retains completed hash caches. **Read chapter** opens the
-tap-paced reader. Tap the art to advance; arrows, replay, Original page and Reduce
-motion are available. Current Auto is provisional; reading-aware dwell is M1e.
+reader. Mobile defaults to **Flow**: swipe up/down between scenes and tap to
+pause/resume. **Auto** uses adjustable dialogue/caption reading time. Arrows,
+replay, Original page and Reduce motion remain available.
 
-The API stays on loopback. Phone access, mobile Flow, offline PWA behavior, final
+The API stays on loopback. Phone access, actual-device validation, offline PWA behavior, final
 scene SFX/music and character pop-out depth have later acceptance gates. The
 existing `preview/m0b` chapter retains the original procedural SFX prototype;
-new M1d chapters currently contain camera events only.
+new chapters currently contain camera events only. Local scene interpretation
+uses the measured 4B Qwen profile and stays flagged for review; it is not a claim
+of reliable semantic accuracy. Cache hits avoid model loading entirely.
 
 ## Runtime and data
 

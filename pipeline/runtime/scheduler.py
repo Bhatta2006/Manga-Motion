@@ -189,6 +189,60 @@ class StageScheduler:
         self.runtime_root = runtime_root
         self.cache = cache
 
+    def run_sequence(self,adapter,pages,prepare,*,progress=None,page_ready=None):
+        """Cache inputs may depend on the previous validated page's summary.
+
+        Lazy-load once at the first miss, retain the model across subsequent misses,
+        and unload even when a completion callback fails. Cached pages never load it.
+        """
+        if not pages:raise ValueError('At least one real page is required')
+        started=time.perf_counter();power=_power_status();outputs=[];records=[]
+        sampler=DeviceMemorySampler();loaded=False;load_seconds=unload_seconds=0.0
+        failure=None;error=None;peaks={'torch_peak_allocated_mib':None,'torch_peak_reserved_mib':None}
+        lock=_single_heavy_model(self.runtime_root/'scheduler.lock') if adapter.heavy else nullcontext()
+        with lock:
+            try:
+                for page in pages:
+                    digest=page_sha256(page)
+                    config=prepare(page)
+                    key=cache_key(digest,adapter.stage_name,adapter.revision,config)
+                    output=self.cache.read(adapter.stage_name,key)
+                    hit=bool(output and output.get('page_sha256')==digest and output.get('adapter_revision')==adapter.revision)
+                    run_seconds=0.0
+                    if not hit:
+                        if not loaded:
+                            _reset_cuda_peaks();sampler.start();loaded=True
+                            if progress:progress({'stage':adapter.stage_name,'completed':len(records),'total':len(pages),'state':'loading model' if adapter.heavy else 'starting'})
+                            load_started=time.perf_counter();adapter.load();load_seconds=time.perf_counter()-load_started
+                        run_started=time.perf_counter();result=adapter.run_page(page);run_seconds=time.perf_counter()-run_started
+                        if not isinstance(result,dict):raise TypeError('Adapter must return a JSON object')
+                        if page_sha256(page)!=digest:raise ValueError('Source changed during stage')
+                        output={**result,'page_sha256':digest,'adapter_revision':adapter.revision}
+                        self.cache.write(adapter.stage_name,key,output)
+                    if page_ready:page_ready(output)
+                    outputs.append(output);records.append({'page':str(page),'page_sha256':digest,'cache_hit':hit,'run_seconds':round(run_seconds,4)})
+                    if progress:progress({'stage':adapter.stage_name,'completed':len(records),'total':len(pages),'state':'cached' if hit else 'processing'})
+            except Exception as exc:
+                failure=exc;error=f'{type(exc).__name__}: {exc}'
+            finally:
+                if loaded:
+                    unload_started=time.perf_counter()
+                    try:adapter.unload()
+                    except Exception as exc:failure=failure or exc;error=f'{error or ""}; unload {type(exc).__name__}: {exc}'
+                    finally:
+                        try:peaks=_clear_cuda_cache()
+                        except Exception as exc:failure=failure or exc;error=f'{error or ""}; cleanup {type(exc).__name__}: {exc}'
+                        finally:unload_seconds=time.perf_counter()-unload_started;sampler.stop()
+        metrics={'stage':adapter.stage_name,'revision':adapter.revision,'heavy':adapter.heavy,'pages_total':len(pages),
+                 'cache_hits':sum(r['cache_hit'] for r in records),'load_seconds':round(load_seconds,4),'unload_seconds':round(unload_seconds,4),
+                 'device_vram_baseline_mib':sampler.baseline_mib,'device_vram_peak_mib':sampler.peak_mib,
+                 'process_ram_baseline_mib':sampler.process_ram_baseline_mib,'process_ram_peak_mib':sampler.process_ram_peak_mib,
+                 'power_before':power,'power_after':_power_status(),'elapsed_seconds':round(time.perf_counter()-started,4),
+                 'pages':records,'error':error,**peaks}
+        if hasattr(adapter,'report_metrics'):metrics['adapter_metrics']=adapter.report_metrics()
+        if failure:raise StageExecutionError(error or 'Sequence stage failed',metrics) from failure
+        return outputs,metrics
+
     def probe_load(self, adapter: PageAdapter) -> dict[str, Any]:
         """Measure model residency without claiming any real-page inference result."""
         lock = _single_heavy_model(self.runtime_root / "scheduler.lock") if adapter.heavy else nullcontext()
@@ -347,6 +401,7 @@ class StageScheduler:
                 "pages": page_metrics,
                 **peaks,
             }
+            if hasattr(adapter,'report_metrics'):metrics['adapter_metrics']=adapter.report_metrics()
             if failure is not None:
                 raise StageExecutionError(error or "stage failed", metrics) from failure
         return [x for x in outputs if x is not None], metrics

@@ -17,11 +17,12 @@ from pipeline.store import ChapterStore, read_json
 from pipeline.ingest.hashes import object_hash
 
 
-def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, compiler=None, publisher=None):
+def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, compiler=None, publisher=None, director=None):
     # Import heavy adapter modules only in the child, after it has claimed the job.
     if importer is None:
         from pipeline.ingest.chapter import import_chapter
         importer = import_chapter
+    real_analysis=analyzer is None
     if analyzer is None:
         from pipeline.analyze_chapter import analyze_chapter
         analyzer = analyze_chapter
@@ -31,6 +32,9 @@ def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, co
     if publisher is None:
         from pipeline.api.chapters import playback_info
         publisher = playback_info
+    if director is None and real_analysis:
+        from pipeline.director.chapter import direct_chapter
+        director=direct_chapter
     request = job['request']
     store = ChapterStore(library, job['series'], job['chapter'])
     checkpoint, metrics = job['checkpoint'], job['metrics']
@@ -50,7 +54,7 @@ def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, co
         else:
             metrics['import_resumed'] = True
         from pipeline.streaming import StreamingPublisher
-        stream=StreamingPublisher(store,manifest) if manifest.get('import_manifest_version')==1 else None
+        stream=StreamingPublisher(store,manifest,job_id=job['id']) if manifest.get('import_manifest_version')==1 else None
         def ready(page):
             if stream:
                 stream.publish(page)
@@ -59,8 +63,12 @@ def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, co
                     metrics['first_readable_seconds']=round(time.perf_counter()-started,6)
                 jobs.update(job['id'],metrics=metrics)
         jobs.update(job['id'], phase='analysis', progress={})
-        _, metrics['analysis'] = analyzer(library, job['series'], job['chapter'], runtime, progress=progress,page_ready=ready)
+        _, metrics['analysis'] = analyzer(library, job['series'], job['chapter'], runtime, progress=progress,page_ready=None if director else ready)
         jobs.update(job['id'], metrics=metrics)
+        if director:
+            jobs.update(job['id'],phase='director',progress={})
+            _,metrics['director']=director(library,job['series'],job['chapter'],runtime,progress=progress,page_ready=ready)
+            jobs.update(job['id'],metrics=metrics)
         jobs.update(job['id'], phase='camera', progress={})
         _, metrics['camera'] = compiler(library, job['series'], job['chapter'], runtime, progress=progress)
         jobs.update(job['id'], phase='publishing', metrics=metrics)

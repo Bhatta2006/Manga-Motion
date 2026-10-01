@@ -1,5 +1,5 @@
 export interface Job {id:string;series:string;chapter:string;status:'queued'|'running'|'failed'|'completed';phase:string;error:string|null;attempts:number;progress:{completed?:number;total?:number;state?:string}}
-export interface Chapter {series:string;chapter:string;pages:number;playable:boolean;status:string;job:Job|null;review_flags:number;partial?:boolean;ready_pages?:number;total_pages?:number}
+export interface Chapter {series:string;chapter:string;pages:number;playable:boolean;status:string;job:Job|null;review_flags:number;semantic_review_pages?:number;partial?:boolean;ready_pages?:number;total_pages?:number}
 export interface Playback {script_url:string;asset_base:string;snapshot:string;pages:number;panels:number;reading_wpm:number|null;partial?:boolean;total_pages?:number;processing_status?:string;processing_error?:string|null}
 export async function request<T>(url:string,body?:unknown):Promise<T>{
   const response=await fetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});

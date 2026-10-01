@@ -38,6 +38,7 @@ try{
     await page.locator('.library-link').click();await card().waitFor();
   }
   await page.goto(base+'/?series=golden-m1d&chapter=chapter');await ready();
+  await page.locator('#mode').selectOption('tap');
   await page.locator('#stage').click();await at(1);
   await page.locator('#play').click();await page.locator('#play').blur();
   await page.keyboard.press('ArrowLeft');await at(2);

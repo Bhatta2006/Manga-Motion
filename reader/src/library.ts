@@ -1,5 +1,5 @@
 import {chapters,request,retryJob,type Chapter,type Job} from './api';
-const phaseNames:Record<string,string>={queued:'Waiting',starting:'Starting',import:'Importing pages',analysis:'Preparing analysis','magiv3-detection':'Finding panels','vision-normalize':'Ordering panels','baberu-ocr':'Reading text','vision-text-metadata':'Preparing text metadata','camera-solver':'Preparing camera motion',camera:'Preparing camera motion',publishing:'Preparing playback',completed:'Ready to read',interrupted:'Resuming cached work'};
+const phaseNames:Record<string,string>={queued:'Waiting',starting:'Starting',import:'Importing pages',analysis:'Preparing analysis','magiv3-detection':'Finding panels','vision-normalize':'Ordering panels','baberu-ocr':'Reading text','vision-text-metadata':'Preparing text metadata',director:'Understanding scenes','local-director':'Understanding scenes','camera-solver':'Preparing camera motion',camera:'Preparing camera motion',publishing:'Preparing playback',completed:'Ready to read',interrupted:'Resuming cached work'};
 
 export async function startLibrary(){
   const root=document.querySelector('#app')!;root.classList.add('library-app');
@@ -24,6 +24,7 @@ export async function startLibrary(){
     if(chapter.status==='running'&&p?.total)status.textContent+=` · ${p.completed??0}/${p.total} pages${p.state?' · '+p.state:''}`;
     const meta=document.createElement('p');meta.className='chapter-meta';meta.textContent=`${chapter.partial?`${chapter.ready_pages}/${chapter.total_pages} pages ready`:`${chapter.pages} pages`}${chapter.review_flags?' · '+chapter.review_flags+' review notes':''}`;article.append(eyebrow,title,status,meta);
     const actions=document.createElement('div');actions.className='chapter-actions';
+    if(chapter.semantic_review_pages){const note=document.createElement('p');note.className='chapter-meta';note.textContent=`Scene interpretation needs review on ${chapter.semantic_review_pages} pages.`;article.append(note);}
     if(chapter.playable){const read=document.createElement('a');read.className='read-link';read.textContent=chapter.partial?'Read ready pages':chapter.status==='completed'?'Read chapter':'Read saved version';read.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter});actions.append(read);}
     if(chapter.status==='failed'&&job){
       const message=document.createElement('p');message.className='job-error';message.textContent=job.error??'Unknown processing error';article.append(message);

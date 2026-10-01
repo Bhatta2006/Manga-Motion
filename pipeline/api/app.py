@@ -81,7 +81,7 @@ def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=
             store=chapter_store(series,chapter)
             from pipeline.streaming import streaming_record
             latest=next((j for j in jobs.list() if j['series']==series and j['chapter']==chapter),None)
-            stream=streaming_record(store) if latest and latest['status']!='completed' else None
+            stream=streaming_record(store,latest['id']) if latest and latest['status']!='completed' else None
             info=playback_info(store,stream=stream)
             return {**info,'processing_status':latest['status'] if latest else 'completed',
                     'processing_error':latest['error'] if latest else None}

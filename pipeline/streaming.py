@@ -4,26 +4,28 @@ import copy
 import time
 from pipeline.cache import page_sha256, cache_key
 from pipeline.ingest.hashes import object_hash
-from pipeline.motion.compiler import compile_page, CameraAdapter, VerifiedCameraCache
+from pipeline.motion.compiler import compile_page, CameraAdapter, VerifiedCameraCache, camera_record
 from pipeline.motion.pacing import configured_rate
 from pipeline.motion.timing import PACING_REVISION, READING_KINDS, EXCLUDED_KINDS
 from pipeline.motion.serialize import validate_contract
 from pipeline.store import read_json, write_json
 
 
-def streaming_record(store):
+def streaming_record(store,job_id=None):
     record=read_json(store.asset('cache/stream-playback.json'))
     manifest=read_json(store.asset('import.json'))
     if not record or record.get('import_hash')!=object_hash(manifest):return None
+    if job_id is not None and record.get('job_id')!=job_id:return None
     checksum=record.get('checksum')
     if checksum!=object_hash({k:v for k,v in record.items() if k!='checksum'}):return None
     return record
 
 
 class StreamingPublisher:
-    def __init__(self,store,manifest,*,validator=validate_contract):
+    def __init__(self,store,manifest,*,validator=validate_contract,job_id=None):
         self.store,self.manifest,self.validator=store,manifest,validator
         self.import_hash=object_hash(manifest);self.rate=configured_rate(store)
+        self.job_id=job_id
         labels_path=store.asset('pacing-labels.json');labels=read_json(labels_path)
         if labels_path.exists() and labels is None:raise ValueError('Pacing labels are damaged')
         if labels and labels.get('input_sha256')!=manifest['input_sha256']:raise ValueError('Pacing labels belong to an older import')
@@ -31,7 +33,7 @@ class StreamingPublisher:
         if not isinstance(self.labels,dict):raise ValueError('Invalid pacing labels')
         if set(self.labels)-{p['page_sha256'] for p in manifest['pages']}:raise ValueError('Unknown pacing label page')
         self.compilation_id=object_hash({'rate':self.rate,'labels':self.labels,'revision':CameraAdapter.revision})
-        retained=streaming_record(store)
+        retained=streaming_record(store,job_id)
         self.retained=retained if retained and retained.get('compilation_id')==self.compilation_id else None
         self.pending={};self.done=[];self.compiled=[];self.audit=[]
         self.metrics={'page_publish_seconds':[], 'first_page_seconds':None,'ready_pages':0}
@@ -48,14 +50,10 @@ class StreamingPublisher:
             if any(current.get(k)!=entry[k] for k in ('id','image','size','page_sha256')):raise ValueError('Stream page/import mismatch')
             digest=entry['page_sha256']
             if page_sha256(self.store.asset(entry['image']))!=digest:raise ValueError('Source changed during streaming')
-            record=copy.deepcopy({k:current[k] for k in ('size','panels','order','texts','review')})
             labels=self.labels.get(digest,{})
-            if not isinstance(labels,dict) or set(labels)-{t['id'] for t in record['texts']}:raise ValueError('Unknown pacing text label')
-            for text in record['texts']:
-                if text['id'] in labels:
-                    kind=labels[text['id']]
-                    if kind not in READING_KINDS|EXCLUDED_KINDS|{'unknown'}:raise ValueError('Unknown pacing text kind')
-                    text['kind']=kind
+            if not isinstance(labels,dict) or set(labels)-{t['id'] for t in current['texts']}:raise ValueError('Unknown pacing text label')
+            if any(kind not in READING_KINDS|EXCLUDED_KINDS|{'unknown'} for kind in labels.values()):raise ValueError('Unknown pacing text kind')
+            record=camera_record(current,labels)
             config={'duration':2.0,'reading_wpm':self.rate,'pacing_revision':PACING_REVISION,
                     'page_inputs':{'analysis_sha256':object_hash(record)}}
             cache=VerifiedCameraCache(self.store.asset('cache/stages'))
@@ -78,7 +76,8 @@ class StreamingPublisher:
                 if page_sha256(self.store.asset(earlier['image']))!=earlier['page_sha256']:raise ValueError('Earlier streamed source changed')
             payload={'import_hash':self.import_hash,'script':script,'reading_wpm':self.rate,
                      'ready_pages':len(candidate),'total_pages':len(self.manifest['pages']),
-                     'compilation_id':self.compilation_id}
+                     'compilation_id':self.compilation_id,'job_id':self.job_id}
+            payload['semantic_review_pages']=sum(bool(p.get('semantics',{}).get('needs_review')) for p in self.done+[current])
             payload['checksum']=object_hash(payload)
             if self.retained and len(candidate)<self.retained['ready_pages']:
                 if candidate!=self.retained['script']['pages'][:len(candidate)]:raise ValueError('Retried stream changed saved scenes')

@@ -88,3 +88,4 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - Resolved: user authorizes all remaining milestones without intermediate approval; explicit approval remains required for MotionScript changes.
 - Requested asynchronously: target phone/browser and a continuous chapter/volume for final mobile, story-continuity and full-volume evidence. Existing five pages remain available for implementation and bounded regression checks.
 - M1e technical timing is implemented. User reading comfort remains pending; automatic dialogue/SFX/caption classification is not established by provisional golden annotations.
+- M1f/g and M3a technical implementations are verified. Actual-phone Flow/comfort, independent semantic accuracy and continuous-story/volume evidence remain pending. M3a's 42/52 provisional text-class match is not independent validation; all director pages remain flagged for review. No new blocking question is required for camera/SFX work.

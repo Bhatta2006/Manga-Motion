@@ -7,8 +7,24 @@ from pipeline.ingest.hashes import object_hash
 from pipeline.motion.rules import panel_rule, safe_transition
 from pipeline.motion.solver import rect, solve_camera
 from pipeline.motion.timing import timeline_duration, reading_budget, PANEL_TAIL_SECONDS
+from pipeline.director.validate import validate_output
+import copy
 
-REVISION = 'camera-m1e-1'
+REVISION = 'camera-m3a-1'
+
+
+def camera_record(page, labels=None):
+    record=copy.deepcopy({k:page[k] for k in ('size','panels','order','texts','review')})
+    if 'semantics' in page:
+        record['semantics']=page['semantics'];record['characters']=page.get('characters',[])
+        validate_output({k:record['semantics'][k] for k in ('summary','panels')},record)
+        kinds={t['id']:t['kind'] for panel in record['semantics']['panels'] for t in panel['texts']}
+        for text in record['texts']:
+            if text['id'] in kinds:text['kind']=kinds[text['id']]
+        record['review'] += [{'kind':'director','reason':r} for r in record['semantics'].get('review_reasons',[])]
+    for text in record['texts']:
+        if text['id'] in (labels or {}):text['kind']=labels[text['id']]
+    return record
 
 
 def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
@@ -26,6 +42,7 @@ def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
         if text['panel_id'] is not None and text['panel_id'] not in ids:
             raise ValueError('Text refers to an unknown panel')
     lookup = {p['id']: p for p in panels}
+    semantics={p['id']:p for p in record.get('semantics',{}).get('panels',[])}
     result, audits = [], []
     for index, panel_id in enumerate(order):
         panel = lookup[panel_id]
@@ -49,9 +66,18 @@ def compile_page(record: dict, *, duration=2.0, reading_wpm=None) -> dict:
         focus = [{'kind': 'region', 'ref': 'camera-target', 'bbox': audit['protected']}]
         focus += [{'kind': 'bubble', 'ref': t['id'], 'bbox': t['bbox']} for t in texts]
         # No claims about dialogue, mood or identity from a binary essential flag.
+        tags=semantics.get(panel_id)
+        director={'beat':'quiet','shot':shot,'energy':.1,'mood':[],'time_skip':False,'focus':focus}
+        if tags:
+            director.update({k:tags[k] for k in ('beat','shot','energy','mood','time_skip')})
+            refs={t['id']:t['bbox'] for t in texts}
+            refs.update({c['id']:c['bbox'] for c in record.get('characters',[])})
+            refs[panel_id]=panel['bbox']
+            for target in tags['focus']:
+                if target['ref'] in refs and not any(f.get('ref')==target['ref'] for f in focus):
+                    focus.append({**target,'bbox':refs[target['ref']]})
         result.append({'id': panel_id, 'bbox': panel['bbox'],
-                       'director': {'beat': 'quiet', 'shot': shot, 'energy': .1, 'mood': [],
-                                    'time_skip': False, 'focus': focus},
+                       'director': director,
                        'timeline': timeline, 'transition_out': {'type': 'glide', 'dur': .32},
                        'confidence': {'panel': None, 'ocr': None, 'speaker': None}})
         audits.append(audit)
