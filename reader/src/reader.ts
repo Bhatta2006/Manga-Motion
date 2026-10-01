@@ -8,6 +8,7 @@ import { SourcePlane } from './parallax';
 import { AudioTimeline } from './player';
 import type { MotionScript, Rect } from './types';
 import { setPacing } from './api';
+import { FlowController } from './flow';
 export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null}
 export async function startReader(options:ReaderOptions) {
 
@@ -16,7 +17,7 @@ document.querySelector('#app')!.innerHTML=`
 <main><div class="stage-wrap"><div id="stage" role="button" tabindex="0" aria-label="Advance to next panel"></div><div id="caption"></div><div id="hint">Press Play to begin · tap the art to advance</div></div></main>
 <footer><div class="progress"><span id="progress"></span></div><div class="transport"><div class="controls">
 <button id="prev" aria-label="Previous panel">←</button><button id="play" class="primary">Play</button><button id="next" aria-label="Next panel">→</button><button id="replay" aria-label="Replay panel">↻</button><span id="position"></span>
-</div><div class="options"><select id="mode" aria-label="Playback mode"><option value="tap">Tap paced</option><option value="auto">Auto play</option></select><label id="speed-wrap">Reading speed <select id="speed" aria-label="Reading speed"><option value="160">Slow · 160 wpm</option><option value="240">Average · 240 wpm</option><option value="320">Fast · 320 wpm</option></select></label><button id="classic">Original page</button><label><input id="sfx" type="checkbox" checked>SFX</label><label><input id="reduce" type="checkbox">Reduce motion</label><label><input id="depth" type="checkbox" checked>Parallax</label></div></div>
+</div><div class="options"><select id="mode" aria-label="Playback mode"><option value="tap">Tap paced</option><option value="auto">Auto play</option><option value="flow">Flow · swipe scenes</option></select><label id="speed-wrap">Reading speed <select id="speed" aria-label="Reading speed"><option value="160">Slow · 160 wpm</option><option value="240">Average · 240 wpm</option><option value="320">Fast · 320 wpm</option></select></label><button id="classic">Original page</button><label><input id="sfx" type="checkbox" checked>SFX</label><label><input id="reduce" type="checkbox">Reduce motion</label><label><input id="depth" type="checkbox" checked>Parallax</label></div></div>
 <div class="note"><span id="status">Loading pages…</span><span id="error" role="status"></span></div></footer>`;
 
 document.querySelector('.brand span')!.textContent='/ '+options.title;
@@ -35,6 +36,7 @@ let renderedRect:Rect|null=null;
 let entries:{page:number;panel:number}[]=[];
 let started=performance.now(),lastFrame=0,frameTimes:number[]=[],clockErrors:number[]=[],switches=0,glides=0;
 const metrics={firstReadyMs:0,errors:[] as string[]};
+let flow:FlowController|null=null;
 
 function current() {const e=entries[index];return {page:script.pages[e.page],panel:script.pages[e.page].panels[e.panel]};}
 function rectNow():Rect {return cameraAt(current().panel,Math.max(0,audio.time()-transition)) as Rect;}
@@ -47,7 +49,9 @@ function updateHud() {
   ($('next') as HTMLButtonElement).disabled=index===entries.length-1;
   status.textContent=plane.sprite?'Source-only parallax available · visual preview':'Camera motion · parallax gated: no safe foreground region';
   error.textContent=audio.failures.join(' · ');
-  $('hint').textContent=classic?'Original art · press Motion view to return':audio.playing?'Tap the art to advance':index===entries.length-1&&audio.offset>=audio.duration?'Preview complete · replay or return to page 1':'Play / replay · tap the art for the next panel';
+  const mode=($('mode') as HTMLSelectElement).value;
+  stage.setAttribute('aria-label',mode==='tap'?'Advance to next panel':'Pause or resume scene');
+  $('hint').textContent=classic?'Original art · press Motion view to return':mode==='flow'?'Swipe up for next · tap to pause':audio.playing?(auto?'Tap to pause · Auto follows reading time':'Tap the art to advance'):index===entries.length-1&&audio.offset>=audio.duration?'Chapter complete · replay or return to page 1':'Play to begin';
   $('hint').style.opacity=audio.playing?'0':'1';
 }
 async function show(next:number,play=false,replay=false) {
@@ -78,6 +82,7 @@ async function show(next:number,play=false,replay=false) {
     transition=previous&&!reduce?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade ? .2 : 0;
     if(transition)glides++;
     ready=true;loading=false;switches++;
+    flow?.sync(index);
     if(!metrics.firstReadyMs)metrics.firstReadyMs=performance.now()-started;
     if(play&&!classic)await audio.play(panel,transition);
     if(token===navigation)updateHud();
@@ -102,9 +107,9 @@ $('play').onclick=()=>void action(togglePlay);
 $('next').onclick=()=>void action(()=>advance(1));
 $('prev').onclick=()=>void action(()=>advance(-1));
 $('replay').onclick=()=>void action(()=>show(index,true,true));
-stage.onclick=()=>void action(()=>advance(1));
-stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>advance(1));}};
-$('mode').onchange=()=>{auto=($('mode') as HTMLSelectElement).value==='auto';if(auto&&!audio.playing)void action(togglePlay);};
+stage.onclick=()=>void action(()=>auto?togglePlay():advance(1));
+stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>auto?togglePlay():advance(1));}};
+$('mode').onchange=()=>{const mode=($('mode') as HTMLSelectElement).value;auto=mode==='auto';flow?.setEnabled(mode==='flow'||(auto&&matchMedia('(max-width:650px)').matches));if(auto&&!audio.playing)void action(togglePlay);updateHud();};
 $('speed').onchange=()=>void action(async()=>{
   if(!options.series||!options.chapter)return;
   const control=$('speed') as HTMLSelectElement;
@@ -125,11 +130,11 @@ $('speed').onchange=()=>void action(async()=>{
 $('sfx').onchange=()=>{audio.sfxGain.gain.cancelScheduledValues(0);audio.sfxGain.gain.value=($('sfx') as HTMLInputElement).checked?1:0;};
 $('reduce').onchange=()=>{reduce=($('reduce') as HTMLInputElement).checked;updateHud();};
 $('depth').onchange=()=>{depth=($('depth') as HTMLInputElement).checked;};
-$('classic').onclick=()=>{if(!ready)return;audio.pause();classic=!classic;$('classic').textContent=classic?'Motion view':'Original page';updateHud();};
+$('classic').onclick=()=>{if(!ready)return;audio.pause();classic=!classic;$('classic').textContent=classic?'Motion view':'Original page';flow?.setEnabled(!classic&&(($('mode') as HTMLSelectElement).value==='flow'||(auto&&matchMedia('(max-width:650px)').matches)));updateHud();};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&ready){audio.pause();updateHud();}});
 document.addEventListener('keydown',e=>{
   if(!script||!ready)return;
-  if((e.target as HTMLElement).matches('input,select,button,#stage'))return;
+  if((e.target as HTMLElement).matches('input,select,button,#stage,.flow-rail'))return;
   if(e.key===' '){e.preventDefault();void action(togglePlay);}
   if(e.key==='ArrowLeft')void action(()=>advance(script.direction==='rtl'?1:-1));
   if(e.key==='ArrowRight')void action(()=>advance(script.direction==='rtl'?-1:1));
@@ -155,6 +160,11 @@ async function init() {
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';
   await app.init({resizeTo:stage,background:0x171d1f,preference:'webgl',powerPreference:'low-power',antialias:false,resolution:Math.min(devicePixelRatio,2),autoDensity:true});
   stage.appendChild(app.canvas);app.stage.addChild(world,frameMask);world.mask=frameMask;
+  flow=new FlowController(stage.parentElement!,entries.length,
+    next=>{if(!loading&&next!==index)void action(()=>show(next,true));else flow?.sync(index);},
+    ()=>{if(loading)return;audio.pause();auto=false;($('mode') as HTMLSelectElement).value='flow';void action(()=>{});updateHud();},
+    wasPlaying=>{if(wasPlaying)updateHud();else void action(togglePlay);},()=>audio.playing);
+  if(matchMedia('(max-width:650px)').matches){($('mode') as HTMLSelectElement).value='flow';flow.setEnabled(true);}
   reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;($('reduce') as HTMLInputElement).checked=reduce;
   app.ticker.add(()=>{
     const now=performance.now();if(lastFrame&&ready&&audio.playing){frameTimes.push(now-lastFrame);if(frameTimes.length>3600)frameTimes.shift();}lastFrame=now;

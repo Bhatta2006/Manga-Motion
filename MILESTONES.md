@@ -109,6 +109,8 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1f — Mobile Flow and Auto handoff (≤2 days)
 
+**Status:** implemented and desktop-emulation checks recorded in `reports/M1f.md`; actual phone and audible cue evaluation remain pending.
+
 - **Goal:** meet F03 without routine scene-advance buttons.
 - **Deliverables:** one-handed vertical scroll-to-direct scene sequence, settle/snap behavior, one-start Auto, tap pause, manual interruption, accessible optional transport and original-page context. No sensor dependency.
 - **Files/modules:** `reader/src/{flow.ts,gestures.ts,player.ts,reader.ts}`, `reports/M1f.md`.

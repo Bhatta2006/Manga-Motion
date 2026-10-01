@@ -24,6 +24,7 @@ try{
     assert.equal(await page.locator('#sfx').isDisabled(),true);
     assert.equal(await page.locator('#sfx').isChecked(),false);
     assert.equal(await page.locator('#mode option[value=auto]').textContent(),'Auto');
+    await page.locator('#mode').selectOption('tap');
     for(let index=0;index<25;index++){
       if(index){await page.locator('#stage').click({position:{x:15,y:40}});await ready();}
       await page.waitForFunction(i=>window.mangaMotionDiagnostics?.index===i&&window.mangaMotionDiagnostics?.renderedRect?.every(Number.isFinite),index);
