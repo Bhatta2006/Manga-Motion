@@ -42,4 +42,12 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 
 - User's “ok continue” authorizes M1a only. Folder/CBZ/PDF import, source preservation, settings and page cache are verified; no current import blocker needs a question. See `reports/M1a.md`.
 - Initial RTL/English defaults are explicit and overridable per series; M1a does not choose an untested OCR/TTS language route. PDF resolution is recorded/configurable.
-- A continuous chapter, real phone, semantic SFX/music, perceived depth and uncapped reading-aware Auto remain later acceptance work. Approval is needed before starting M1b.
+- A continuous chapter, real phone, semantic SFX/music, perceived depth and uncapped reading-aware Auto remain later acceptance work. The subsequent “continue with the next work” authorized M1b.
+
+## M1b continuation (2026-10-01)
+
+- M1a commits were pushed to the user-provided `Bhatta2006/Manga-Motion` GitHub repository. M1b connects imports to detection, ordered panels, crop OCR and durable intermediate artifacts; no reader/voice/contract change. See `reports/M1b.md`.
+- English/RTL is the measured initial route. Other source languages fail before model loading until their adapters are evaluated. Real LTR/continuous chapters and the actual phone remain later evaluation inputs.
+- **Current approval gate — D26:** verified Magi/Baberu APIs do not supply calibrated confidence. Recommended exception: retain `null` scores, explicit confidence-unavailable warnings and concrete review reasons; defer numerical calibration to an independently labeled validation set. PRD §2 remains open until approved. This is the only current dependency proposal requiring a decision.
+- Provisional five-page panel/order/dialogue quality thresholds pass; independent accuracy is not established. Cold detection+OCR measured 6.53868 s/page; final fully cached replay 0.2891 s. Battery operation was observed after the cold run, without isolating the slowdown's cause.
+- Stop for confidence-exception and M1b approval before M1c.

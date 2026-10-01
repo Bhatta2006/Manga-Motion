@@ -75,3 +75,19 @@ Cache identity includes source SHA-256, adapter revision, page index for PDF, an
 Use natural filename ordering with an explicit inferred-order review note, or document order for PDF. Start with RTL/English settings from the supplied sample; users can override per series. Reject animated/multipage images, unsupported decoder formats, non-identity EXIF orientation, unsafe archive names/links/duplicates/encryption and oversized inputs with a named error. Size limits mitigate accidental resource exhaustion but are not a sandbox for hostile PDF complexity.
 
 This import manifest is independent of MotionScript. No schema change, voice model, director API, reader flow, music or depth feature is introduced in M1a. Full tests pass and measurements replace ingest assumptions in PRD §8; stop for M1b approval.
+
+## D26 — Proposed M1b confidence exception; approval required
+
+Source verification confirms that the pinned Magi and Baberu public methods return thresholded geometry/class hints and text, **not calibrated per-panel/per-text confidence probabilities**. This is the anticipated D17 limitation. M1b cannot honestly satisfy PRD §2's numeric confidence goal from those public outputs or from five tuned sample pages. Panel/OCR accuracy measurements against labels are not per-item confidence calibration.
+
+Recommended exception: retain the existing `null` confidence representation, attach explicit detector/OCR confidence-unavailable warnings plus concrete geometry/text/order review reasons, and defer numeric calibration until a separate, independently labeled validation set exists. Do not substitute token probabilities, IoU, binary essential flags or a hand-written heuristic score as a calibrated confidence. Keep uncertain results reviewable. The current implementation is an interim artifact under the existing adapter contract; the PRD's numeric confidence goal remains open.
+
+**Await explicit approval of this exception before changing PRD §2 or declaring M1b fully closed.** The user's “continue with the next work” authorized M1b implementation, not an invented confidence metric. MotionScript v1 remains unchanged; no cloud fallback/model substitution or voice work is introduced.
+
+## D27 — M1b ordering and text metadata implementation
+
+Use Magi detections behind the existing adapter; normalize only geometry/metadata. Its public method does not perform the repository's transcript/panel sort. Apply a bounded RTL/LTR page-cut solver with explicit ambiguity flags instead of the potentially unbounded graph-cycle/erosion helper. Verify against actual source frame/order annotations and disclose their provisional/non-blind status. Keep a flagged full-page geometry fallback for no detections; no new detector is needed unless measured failures justify one.
+
+Use exact rectangle union for the PRD's 70% coverage check. Preserve original detector indices, raw associations, OCR crops and model essential flags. A binary essential flag cannot provide a final dialogue/caption/SFX/sign class; retain `unknown` kinds rather than guessing. OCR reads only detected padded text crops, rejecting whole-page crops before the engine. Direction changes invalidate only geometry/metadata. A settings change does not trigger new model inference when relevant model inputs are identical.
+
+Measured cold inference is slower than the prior M0 observation with the same model/runtime settings. Windows reports AC offline after the run; its contribution is not isolated. Record actual timings, retain earlier measurements and add read-only power telemetry for future matched comparisons. No power settings or model versions are changed.

@@ -131,6 +131,8 @@ M1a is implemented and verified on the five supplied pages in folder, CBZ and PD
 - Validate: panels should cover ≥ 70% of the page area (else flag); order sanity check (RTL, no overlaps); full-page splash gets a single "panel".
 - **Manual override** is a drag-to-fix UI in the Review queue. Corrections are saved and become your golden-set labels.
 
+**M1b implementation evidence (1 October 2026):** imported pages now produce normalized detections, bounded RTL/LTR order, crop-only OCR and review reasons. The verified Magi detector method does not itself invoke transcript sorting; the implementation uses a bounded page-cut solver with explicit ambiguity flags (D27). Five supplied RTL pages yield 25 panels and 53 text crops. Provisional engineer labels score 25/25 panels at IoU ≥0.5, 5/5 whole-page order and 0/195 dialogue word edits; these are not blind/independent accuracy claims. The models omit calibrated confidence; D26 proposes an exception, pending approval, so §2's numerical confidence goal remains open. See `reports/M1b.md`.
+
 ### 5.3 Text detection and fast OCR
 **Flow:** detect text boxes once per page (Magi v3; `comic-text-detector` as fallback) → **crop bubbles only** (8 px pad) → **batch OCR on GPU** → confidence gate → VLM re-read for anything below threshold.
 
@@ -394,12 +396,12 @@ Everything the reader needs is in this file. It is the contract between pipeline
 4. Cache everything by hash so nothing runs twice.
 5. Process in the background (overnight is fine); the reader streams pages as they finish.
 
-**VRAM plan (sequential; estimates, measure in M0):**
+**VRAM plan (sequential; measured M1b entries identified, other entries remain estimates):**
 
 | Stage | Model | Est. VRAM | Fits alone? |
 |---|---|---|---|
-| Panels, text, tails, characters | Magi v3, fp16 (1.67 GB of weights on HF; runtime est. 2 to 3 GB) | 2 to 3 GB | Yes |
-| OCR | manga-ocr (~444 MB model) or Baberu (115M) | < 1 GB | Yes |
+| Panels, text, tails, characters | Pinned Magi v3, CUDA fp16 | **2,145 MiB device peak**, five-page M1b observation | Measured on sample |
+| OCR | Pinned Baberu, GPU vision / CPU INT8 decoder; manga-ocr unmeasured | **393 MiB device peak** after Magi unload, five-page M1b observation | Measured on sample |
 | Panel fallback | Kumiko (OpenCV) | CPU | Yes |
 | Director | Claude/Gemini API | 0 (cloud) | Yes |
 | Local voices | Kokoro (< 2 GB) or Qwen3-TTS 0.6B Base (~2 to 4 GB) | 2 to 4 GB | Yes |
@@ -438,6 +440,8 @@ Everything the reader needs is in this file. It is the contract between pipeline
 | PDF, 144 dpi | 0.146580 s/page | 1.034257 s | 5/5 | 63 MiB | 0 MiB |
 
 Page work includes copying/validation/cache publication; import elapsed also includes container setup, telemetry, final hash checks and manifest publication, but excludes Python process startup. RAM is the OS-reported fresh-process lifetime peak, rounded to MiB, which captures allocations missed by interval sampling. These are single observations on a small format fixture, not full-chapter throughput guarantees. See `reports/M1a.md` for warm timings and disk use.
+
+**Measured M1b analysis (1 October 2026):** Magi inference mean 3.54452 s/page; Baberu mean 2.99416 s/page; combined heavy inference **6.53868 s/page**, missing the ≤3 s target in this observation. Initial five-page all-stage cold elapsed **72.6336 s** including 36.0131 s Magi loading. Final CPU revisions were recomputed separately while reusing identical heavy outputs. Final fully warm replay: **0.2891 s**, 20/20 stage-page hits, no model loads. Sampled process RAM peaks: Magi 2,804 MiB, Baberu 1,818 MiB; current CPU geometry/text stages 38/47 MiB in separate processes. Device sampling interval 0.2 s may miss short peaks; warm memory is unmeasured. Earlier M0 optimization was faster at 2.8480 s/page; the regression's cause is not isolated. AC offline was observed after the cold run; new power telemetry supports future comparisons. Full metrics, revision context, quality-label limits and confidence approval gate: `reports/M1b.md`.
 
 ---
 

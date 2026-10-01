@@ -49,7 +49,7 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1a — Import and page cache (≤2 days)
 
-**Status:** implemented and verified after the user's “ok continue” authorization; awaiting approval before M1b. Evidence: `reports/M1a.md`.
+**Status:** implemented and verified after the user's “ok continue” authorization, committed and pushed. The subsequent “continue with the next work” authorizes M1b. Evidence: `reports/M1a.md`.
 
 - **Goal:** ingest CBZ/ZIP, PDF, and folders without changing source art.
 - **Deliverables:** import validation, per-series settings, lossless page-serving path, SHA-256 page index, safe archive/PDF handling, resumable stage cache.
@@ -61,13 +61,15 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1b — Panels, reading order, and OCR (≤2 days)
 
+**Status:** implemented and tested on 2026-10-01; measured quality thresholds met on provisional engineer labels only. Awaiting D26 confidence-exception approval and milestone approval before M1c. Evidence and limitations: `reports/M1b.md`.
+
 - **Goal:** turn pages into ordered, confidence-scored panels and text without manual happy-path work.
 - **Deliverables:** Magi adapter output normalization, reading-order logic, bubble-only OCR crop adapter, fallback only for demonstrated failures, per-stage intermediate JSON and confidence flags.
-- **Files/modules:** `pipeline/adapters/{ocr.py,panel_fallback.py}`, `pipeline/vision/{panels.py,order.py,crops.py,text.py}`, `library/<series>/<chapter>/cache/{detections,ocr}.json`, `reports/M1b.md`.
+- **Files/modules:** `pipeline/analyze_chapter.py`, `pipeline/adapters/ocr.py`, `pipeline/vision/{panels.py,order.py,crops.py,text.py,evaluate.py}`, `pipeline/cache.py`, `pipeline/runtime/scheduler.py`, `tests/{test_vision.py,verify_m1b_golden.py}`, `library/<series>/<chapter>/{analysis.json,cache}`, `reports/M1b.md`. No separate fallback detector was justified by measured failures; missing panels receive flagged geometry fallback.
 - **Tests:** golden panel boxes/order/transcripts; RTL and LTR cases if supplied; ≥70% panel coverage flag; irregular/splash page cases; cache and single-model residency test.
-- **Acceptance checklist:** [ ] all supplied pages have an explicit order or review flag; [ ] detected panels and dialogue OCR are scored against labels; [ ] panel precision/recall ≥95%, fully correct page order ≥97%, dialogue CER/WER ≤3% on the applicable golden subset, or slice remains open with failures documented; [ ] OCR reads crops only; [ ] no OOM.
+- **Acceptance checklist:** [x] all supplied pages have an explicit order or review flag; [x] detected panels and dialogue OCR are scored against labels; [x] panel precision/recall ≥95%, fully correct page order ≥97%, dialogue WER ≤3% on the applicable **provisional** subset (25/25 panels, 5/5 order, 0/195 word edits); [x] OCR reads crops only (53 crops / 55 segments, zero full-page calls); [x] no OOM (2,145 MiB peak); [ ] calibrated numeric confidence or approved D26 exception. Reference bias and lack of independent validation remain explicit.
 - **Measurements:** precision/recall, order accuracy, CER/WER, flagged count, stage seconds/page, VRAM/RAM peak, cache hits.
-- **Known risks:** five to ten pages produce noisy quality estimates; stylized fonts, borderless panels, and Magi output shape may require a verified fallback.
+- **Known risks:** five pages and non-blind panel annotations cannot establish general accuracy; stylized fonts, borderless/splash panels and real LTR remain unevaluated. Models omit calibrated confidence. Cold heavy inference is 6.53868 s/page versus the ≤3 s target; the slowdown's cause is unisolated. Final warm replay is 0.2891 s with 20/20 hits. See D26/D27 and the report.
 
 ### M1c — MotionScript v1 and constrained camera solver (≤2 days)
 
