@@ -37,8 +37,13 @@ class JsonStageCache:
         path = self.path(stage, key)
         if not path.is_file():
             return None
-        with path.open("r", encoding="utf-8") as handle:
-            return json.load(handle)
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                value = json.load(handle)
+            return value if isinstance(value, dict) else None
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            # An interrupted/manual edit is a miss, never valid stage output.
+            return None
 
     def write(self, stage: str, key: str, value: dict[str, Any]) -> Path:
         path = self.path(stage, key)

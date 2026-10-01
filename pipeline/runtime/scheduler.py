@@ -71,6 +71,24 @@ def _process_ram_mib(peak: bool = False) -> int | None:
     return round((counters.PeakWorkingSetSize if peak else counters.WorkingSetSize) / 2**20)
 
 
+def _power_status() -> dict[str, Any] | None:
+    """Read-only Windows power context for comparable laptop benchmarks."""
+    if os.name != "nt":
+        return None
+
+    class SystemPowerStatus(ctypes.Structure):
+        _fields_ = [("ac", ctypes.c_ubyte), ("battery_flag", ctypes.c_ubyte),
+                    ("battery_percent", ctypes.c_ubyte), ("saver", ctypes.c_ubyte),
+                    ("remaining_seconds", ctypes.c_uint32), ("full_seconds", ctypes.c_uint32)]
+
+    value = SystemPowerStatus()
+    if not ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(value)):
+        return None
+    return {"ac_line_status": value.ac, "ac_online": None if value.ac == 255 else value.ac == 1,
+            "battery_percent": None if value.battery_percent == 255 else value.battery_percent,
+            "battery_saver": bool(value.saver)}
+
+
 class DeviceMemorySampler:
     def __init__(self, interval_seconds: float = 0.2) -> None:
         self.interval_seconds = interval_seconds
@@ -177,6 +195,7 @@ class StageScheduler:
         with lock:
             _reset_cuda_peaks()
             sampler = DeviceMemorySampler()
+            power_before = _power_status()
             sampler.start()
             error: str | None = None
             failure: Exception | None = None
@@ -217,6 +236,8 @@ class StageScheduler:
                 "process_ram_baseline_mib": sampler.process_ram_baseline_mib,
                 "process_ram_peak_mib": sampler.process_ram_peak_mib,
                 "error": error,
+                "power_before": power_before,
+                "power_after": _power_status(),
                 **peaks,
             }
             if failure is not None:
@@ -247,7 +268,7 @@ class StageScheduler:
             misses = []
             for index, (page, page_hash, key) in enumerate(items):
                 cached = self.cache.read(adapter.stage_name, key)
-                if cached is None:
+                if cached is None or cached.get("page_sha256") != page_hash or cached.get("adapter_revision") != adapter.revision:
                     misses.append(index)
                 else:
                     outputs[index] = cached
@@ -256,6 +277,7 @@ class StageScheduler:
             load_seconds = 0.0
             unload_seconds = 0.0
             sampler = DeviceMemorySampler()
+            power_before = _power_status()
             error: str | None = None
             failure: Exception | None = None
             peaks: dict[str, int | None] = {"torch_peak_allocated_mib": None, "torch_peak_reserved_mib": None}
@@ -312,6 +334,8 @@ class StageScheduler:
                 "process_ram_baseline_mib": sampler.process_ram_baseline_mib,
                 "process_ram_peak_mib": sampler.process_ram_peak_mib,
                 "error": error,
+                "power_before": power_before,
+                "power_after": _power_status(),
                 "elapsed_seconds": round(time.perf_counter() - stage_started, 4),
                 "pages": page_metrics,
                 **peaks,
