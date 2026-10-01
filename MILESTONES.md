@@ -35,9 +35,11 @@ User approved M0b and then explicitly reprioritized camera, SFX and source-only 
 - **Deliverables:** bounded push/pull/pan recipes, panel/page transitions, local procedural SFX adapter, source-only parallax safety gate with passing regions only, MotionScript v1 schema/serialization, PixiJS tap/auto reader, original-page toggle and reduce motion.
 - **Files/modules:** `pipeline/motion/{fixed.py,serialize.py}`, `pipeline/layers/integrity.py`, `pipeline/adapters/{sfx.py,tts_base.py}`, `pipeline/m0_preview.py`, `pipeline/preview_server.py`, `schema/motionscript-v1.schema.json`, `reader/src/{main.ts,player.ts,camera.ts,parallax.ts}`, `reader/package-lock.json`, `library/preview/m0b/{pages,sfx,motionscript.json,cache}`, `reports/M0b.md`.
 - **Tests:** v1 schema and future line event validation; camera interpolation/comfort/text visibility; deterministic PCM/timing; pause/replay/navigation; pixel/hash identity; parallax coverage/guard rejection; real browser playback and frame measurements.
-- **Acceptance checklist:** [ ] five pages / 25 panels playable in detected order; [ ] original art preserved; [ ] tap advances one panel, auto/pause/replay/classic work; [ ] visuals and SFX follow Web Audio time; [ ] SFX failures visible and mute works; [ ] parallax enabled only on passing regions or explicit no-go; [ ] zero new heavy model/OOM; [ ] user judges motion versus static (pending viewing).
+- **Acceptance checklist:** [x] five pages / 25 panels playable in detected order; [x] original art preserved; [x] tap advances one panel, auto/pause/replay/classic work; [x] visuals and SFX follow Web Audio time; [x] SFX failures visible and mute works; [x] parallax enabled only on passing regions or explicit no-go (0/30 eligible); [x] zero new heavy model/OOM; [ ] user judges motion versus static (pending viewing).
 - **Measurements:** motion/SFX/parallax seconds per page, VRAM/RAM, cold/warm cache, first preview latency, frame time/FPS, sampled visual-clock offset, source/served pixels, accepted/rejected parallax candidates, subjective comfort/feel.
 - **Known risks:** five mixed-series samples are not one chapter. Preview recipes and accents are deterministic heuristics, not semantic directing. Source-only parallax may reject all supplied regions; no generated fill is allowed. No TTS/ASR quality claims.
+
+M0b revised technical scope completed on 2026-10-01; evidence and limits in `reports/M0b.md`. User viewing/comfort judgment remains pending. Stop before M1.
 
 ## M1 — Pipeline and reader skeleton (PRD: 1–2 weeks)
 
