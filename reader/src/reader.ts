@@ -7,9 +7,9 @@ import { fit } from './camera';
 import { SourcePlane } from './parallax';
 import { AudioTimeline } from './player';
 import type { MotionScript, Rect } from './types';
-import { setPacing } from './api';
+import { setPacing, playback } from './api';
 import { FlowController } from './flow';
-export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null}
+export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number}
 export async function startReader(options:ReaderOptions) {
 
 document.querySelector('#app')!.innerHTML=`
@@ -37,6 +37,9 @@ let entries:{page:number;panel:number}[]=[];
 let started=performance.now(),lastFrame=0,frameTimes:number[]=[],clockErrors:number[]=[],switches=0,glides=0;
 const metrics={firstReadyMs:0,errors:[] as string[]};
 let flow:FlowController|null=null;
+const pageBases=new Map<string,string>();
+let polling=false,pollTimer=0,closed=false,processingError='';
+window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);},{once:true});
 
 function current() {const e=entries[index];return {page:script.pages[e.page],panel:script.pages[e.page].panels[e.panel]};}
 function rectNow():Rect {return cameraAt(current().panel,Math.max(0,audio.time()-transition)) as Rect;}
@@ -48,10 +51,11 @@ function updateHud() {
   ($('prev') as HTMLButtonElement).disabled=index===0;
   ($('next') as HTMLButtonElement).disabled=index===entries.length-1;
   status.textContent=plane.sprite?'Source-only parallax available · visual preview':'Camera motion · parallax gated: no safe foreground region';
-  error.textContent=audio.failures.join(' · ');
+  error.textContent=[...audio.failures,processingError].filter(Boolean).join(' · ');
+  document.querySelector('.study')!.textContent=options.partial?`${script.pages.length}/${options.totalPages} pages ready`:`${script.pages.length} pages · original art`;
   const mode=($('mode') as HTMLSelectElement).value;
   stage.setAttribute('aria-label',mode==='tap'?'Advance to next panel':'Pause or resume scene');
-  $('hint').textContent=classic?'Original art · press Motion view to return':mode==='flow'?'Swipe up for next · tap to pause':audio.playing?(auto?'Tap to pause · Auto follows reading time':'Tap the art to advance'):index===entries.length-1&&audio.offset>=audio.duration?'Chapter complete · replay or return to page 1':'Play to begin';
+  $('hint').textContent=classic?'Original art · press Motion view to return':index===entries.length-1&&audio.offset>=audio.duration?(options.partial?'Waiting for next page…':'Chapter complete · replay or return to page 1'):mode==='flow'?'Swipe up for next · tap to pause':audio.playing?(auto?'Tap to pause · Auto follows reading time':'Tap the art to advance'):'Play to begin';
   $('hint').style.opacity=audio.playing?'0':'1';
 }
 async function show(next:number,play=false,replay=false) {
@@ -63,7 +67,9 @@ async function show(next:number,play=false,replay=false) {
   error.textContent='';status.textContent='Loading panel…';
   try {
     const {page,panel}=current();
-    const url=options.assetBase+page.image;
+    const base=pageBases.get(page.id)??options.assetBase;
+    audio.assetBase=base;
+    const url=base+page.image;
     let texture=textures.get(url);
     if(!texture) {texture=await Assets.load<Texture>(url);textures.set(url,texture);}
     if(token!==navigation) return;
@@ -73,7 +79,7 @@ async function show(next:number,play=false,replay=false) {
     plane.prepare(texture,panel);if(plane.sprite)world.addChild(plane.sprite);
     // ±1 page cache; release old TextureSources explicitly. No models in reader.
     for(const [key,value] of textures) {
-      const pageIndex=script.pages.findIndex(p=>options.assetBase+p.image===key);
+      const pageIndex=script.pages.findIndex(p=>(pageBases.get(p.id)??options.assetBase)+p.image===key);
       if(Math.abs(pageIndex-entries[index].page)>1) {await Assets.unload(key);textures.delete(key);}
     }
     if(token!==navigation)return;
@@ -144,6 +150,7 @@ async function init() {
   const response=await fetch(options.scriptUrl);if(!response.ok)throw Error('Chapter playback is unavailable; return to Library and retry');
   const data=await response.json();const validate=new Ajv({allErrors:true}).compile(schema);
   script=validateMotionScript(data,validate) as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+  for(const page of script.pages)pageBases.set(page.id,options.assetBase);
   document.querySelector('.study')!.textContent=`${script.pages.length} pages · original art`;
   const hasSfx=script.pages.some(p=>p.panels.some(panel=>panel.timeline.some(event=>event.type==='sfx')));
   const sfxControl=$('sfx') as HTMLInputElement;
@@ -189,8 +196,32 @@ async function init() {
     if(audio.playing&&time>=audio.duration+transition-.001){audio.finish();if(auto&&index<entries.length-1)void show(index+1,true);else updateHud();}
   });
   await show(0);
+  async function refreshPages(){
+    if(closed||polling||!options.partial||!options.series||!options.chapter)return;
+    polling=true;
+    try{
+      const info=await playback(options.series,options.chapter);
+      processingError=info.processing_error?`Processing paused: ${info.processing_error}`:'';
+      options.totalPages=info.total_pages;
+      if(info.script_url!==options.scriptUrl){
+        const response=await fetch(info.script_url);if(!response.ok)throw Error('New pages are unavailable');
+        const next=validateMotionScript(await response.json(),validate) as MotionScript;
+        if(next.chapter!==script.chapter||next.direction!==script.direction||next.pages.length<script.pages.length||
+           JSON.stringify(next.pages.slice(0,script.pages.length))!==JSON.stringify(script.pages))throw Error('Saved scenes changed; reopen the chapter to use the new version');
+        const oldCount=entries.length;
+        for(const page of next.pages.slice(script.pages.length))pageBases.set(page.id,info.asset_base);
+        script=next;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+        flow?.setCount(entries.length);flow?.sync(index);options.scriptUrl=info.script_url;
+        if(auto&&ready&&!loading&&index===oldCount-1&&audio.offset>=audio.duration+transition&&index<entries.length-1)void show(index+1,true);
+      }
+      options.partial=info.partial;
+      if(ready)updateHud();
+    }catch(e){processingError=String(e);if(ready)updateHud();}
+    finally{polling=false;if(!closed&&options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);}
+  }
+  if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }

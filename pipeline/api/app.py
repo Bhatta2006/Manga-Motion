@@ -77,7 +77,14 @@ def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=
 
     @app.get('/api/chapters/{series}/{chapter}/playback')
     def playback(series: str, chapter: str):
-        try: return playback_info(chapter_store(series,chapter))
+        try:
+            store=chapter_store(series,chapter)
+            from pipeline.streaming import streaming_record
+            latest=next((j for j in jobs.list() if j['series']==series and j['chapter']==chapter),None)
+            stream=streaming_record(store) if latest and latest['status']!='completed' else None
+            info=playback_info(store,stream=stream)
+            return {**info,'processing_status':latest['status'] if latest else 'completed',
+                    'processing_error':latest['error'] if latest else None}
         except (ValueError,OSError,KeyError,TypeError) as exc: raise HTTPException(409,str(exc)) from exc
 
     @app.post('/api/chapters/{series}/{chapter}/pacing')

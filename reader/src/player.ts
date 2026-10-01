@@ -10,7 +10,7 @@ export class AudioTimeline {
   sources:AudioBufferSourceNode[]=[];
   failures:string[]=[];
   startAt=0;offset=0;duration=1;transition=0;playing=false;generation=0;
-  constructor(readonly assetBase='/chapter/') { this.analyser.fftSize=256;this.sfxGain.connect(this.analyser);this.analyser.connect(this.context.destination);this.voiceGain.connect(this.context.destination); }
+  constructor(public assetBase='/chapter/') { this.analyser.fftSize=256;this.sfxGain.connect(this.analyser);this.analyser.connect(this.context.destination);this.voiceGain.connect(this.context.destination); }
   sfxRms() { const values=new Float32Array(this.analyser.fftSize);this.analyser.getFloatTimeDomainData(values);return Math.sqrt(values.reduce((s,v)=>s+v*v,0)/values.length); }
   async unlock() { if (this.context.state!=='running') await this.context.resume(); }
   async prepare(panel:Panel) {

@@ -247,7 +247,7 @@ class StageScheduler:
     def run_pages(
         self, adapter: PageAdapter, pages: list[Path], config: dict[str, Any] | None = None,
         page_configs: dict[str, dict[str, Any]] | None = None,
-        progress=None,
+        progress=None, page_ready=None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         stage_started = time.perf_counter()
         if not pages:
@@ -276,6 +276,7 @@ class StageScheduler:
                     outputs[index] = cached
                     page_metrics.append({"page": str(page), "page_sha256": page_hash, "cache_hit": True, "run_seconds": 0.0})
                     if progress: progress({'stage': adapter.stage_name, 'completed': len(page_metrics), 'total': len(pages), 'state': 'cached'})
+                    if page_ready: page_ready(cached)
 
             load_seconds = 0.0
             unload_seconds = 0.0
@@ -304,6 +305,7 @@ class StageScheduler:
                         record = {**result, "page_sha256": page_hash, "adapter_revision": adapter.revision}
                         self.cache.write(adapter.stage_name, key, record)
                         outputs[index] = record
+                        if page_ready: page_ready(record)
                         if progress: progress({'stage': adapter.stage_name, 'completed': len(page_metrics)+1, 'total': len(pages), 'state': 'processing'})
                         page_metrics.append({"page": str(page), "page_sha256": page_hash, "cache_hit": False, "run_seconds": round(run_seconds, 4)})
                 except Exception as exc:

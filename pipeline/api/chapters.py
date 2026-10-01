@@ -30,8 +30,8 @@ def checked_asset(store, relative):
     return store.asset(relative)
 
 
-def snapshot(store: ChapterStore):
-    script = read_json(store.asset('motionscript.json'))
+def snapshot(store: ChapterStore, script=None):
+    script = script if script is not None else read_json(store.asset('motionscript.json'))
     if script is None:
         raise ValueError('Chapter is not ready to read')
     if script.get('chapter') != f'{store.series}/{store.chapter}':
@@ -64,15 +64,15 @@ def read_snapshot(store, digest):
     return record
 
 
-def playback_info(store):
-    digest, record = snapshot(store)
+def playback_info(store, *, stream=None):
+    digest, record = snapshot(store,stream['script'] if stream else None)
     base = f'/api/chapters/{store.series}/{store.chapter}/playback/{digest}'
     script = record['script']
     audit = read_json(store.asset('cache/camera-audit.json')) or {}
-    rate = audit.get('reading_wpm') if audit.get('script_hash') == digest else None
+    rate = stream['reading_wpm'] if stream else audit.get('reading_wpm') if audit.get('script_hash') == digest else None
     return {'snapshot': digest, 'script_url': base+'/motionscript.json', 'asset_base': base+'/assets/',
             'pages': len(script['pages']), 'panels': sum(len(p['panels']) for p in script['pages']),
-            'reading_wpm':rate}
+            'reading_wpm':rate,'partial':bool(stream),'total_pages':stream['total_pages'] if stream else len(script['pages'])}
 
 
 def asset_response(store, digest, relative):
@@ -109,9 +109,14 @@ def library_entries(root: Path, jobs):
             job = latest.get((series,chapter))
             if job: job = {k:job[k] for k in ('id','series','chapter','status','phase','progress','attempts','error')}
             pages = script.get('pages', [])
+            from pipeline.streaming import streaming_record
+            stream = streaming_record(store) if job and job['status']!='completed' else None
+            if stream:pages=stream['script']['pages']
             entries.append({'series':series, 'chapter':chapter, 'pages':len(pages) or len(manifest.get('pages', [])),
                             'playable':bool(pages), 'status':job['status'] if job else ('completed' if pages else 'imported'),
-                            'job':job, 'review_flags':sum(len(p.get('review', [])) for p in analysis.get('pages', []))})
+                            'job':job,'partial':bool(stream),'ready_pages':len(pages),
+                            'total_pages':len(manifest.get('pages', [])) or len(pages),
+                            'review_flags':sum(len(p.get('review', [])) for p in analysis.get('pages', []))})
         except (ValueError, OSError, TypeError, KeyError):
             continue
     return entries

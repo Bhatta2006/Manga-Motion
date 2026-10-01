@@ -146,3 +146,9 @@ Changing reading speed recompiles CPU-only camera timing and preserves immutable
 ## D31 — Native scene Flow
 
 Mobile defaults to a native vertical snap rail over the existing scene renderer. Settling selects at most one adjacent panel; a same-panel settle does not replay its cues. Touch/scroll interruption pauses Auto and hands control to Flow. A tap pauses/resumes, preserving scene time. The audio master remains within-panel and original art/transport remain accessible. Desktop scroll tests establish bounded navigation, not actual-phone comfort, touch conflicts or sound quality. These user gates remain pending while independent implementation continues.
+
+## D32 — Ordered validated streaming prefixes
+
+Publish after completed OCR pages while retaining amortized batch model loads. CPU text normalization/camera compilation and Node validation do not load another model. Stream only a contiguous page prefix, recheck source hashes and seal the readiness record. Cache camera outputs using the same page/analysis/rate/version identity as final compilation. Retry preserves a previously longer identical prefix until catches up. Old immutable snapshots and complete chapter files survive failures.
+
+Availability/status belong to the local job API, not MotionScript timing semantics; each prefix is independently complete v1 playback. Append only if previous pages match exactly, otherwise tell the reader to reopen the changed chapter. Keep playing the same panel with the same clock and asset snapshot. Import remains atomic and detection remains batched; the first cold page cannot precede those stages. Measured warm first-page readiness improves; cold/device performance remains unmeasured.

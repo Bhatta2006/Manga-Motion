@@ -70,7 +70,7 @@ def semantic_ocr(record: dict) -> dict:
 
 def analyze_chapter(library: Path, series: str, chapter: str, runtime: Path,
                     threads: int = 4, vision_device: str = "cuda",
-                    detection_adapter=None, ocr_factory=None, progress=None) -> tuple[dict, dict]:
+                    detection_adapter=None, ocr_factory=None, progress=None, page_ready=None) -> tuple[dict, dict]:
     store = ChapterStore(library, series, chapter)
     if runtime.resolve().drive.upper() != "D:" or not runtime.is_dir():
         raise ImportFailure("Dot-source scripts/enter-runtime.ps1; runtime must exist on D:")
@@ -96,9 +96,9 @@ def analyze_chapter(library: Path, series: str, chapter: str, runtime: Path,
         scheduler = StageScheduler(runtime, cache)
         stage_metrics = []
 
-        def run(adapter, config=None, dependencies=None):
+        def run(adapter, config=None, dependencies=None, completed=None):
             try:
-                output, metrics = scheduler.run_pages(adapter, pages, config, dependencies, progress=progress)
+                output, metrics = scheduler.run_pages(adapter, pages, config, dependencies, progress=progress,page_ready=completed)
             except StageExecutionError as exc:
                 stage_metrics.append(exc.metrics)
                 write_json(store.asset("cache/analysis-last-failure.json"), {"stages": stage_metrics, "error": str(exc)})
@@ -126,8 +126,19 @@ def analyze_chapter(library: Path, series: str, chapter: str, runtime: Path,
         ocr_dependencies = {h: {"boxes_sha256": object_hash({"texts": r["detections"]["texts"], "size": r["image_size"],
                                                            "detector_revision": r["detector_revision"]})}
                             for h, r in normalized.items()}
+        def ready_ocr(record):
+            if not page_ready: return
+            digest=record['page_sha256']
+            metadata=text_metadata(normalized[digest],record)
+            for entry in manifest['pages']:
+                if entry['page_sha256'] != digest: continue
+                page_ready({**{k:entry[k] for k in ('id','image','source_name','page_sha256','size')},
+                            'panels':normalized[digest]['panels'],'order':normalized[digest]['order'],
+                            'coverage':normalized[digest]['coverage'],'texts':metadata['texts'],
+                            'review':normalized[digest]['review']+metadata['review'],
+                            'confidence_status':'uncalibrated'})
         ocr = run(factory(ocr_inputs, threads=threads, vision_device=vision_device, split_tall=True),
-                  chapter_ocr_config(threads, vision_device, language), ocr_dependencies)
+                  chapter_ocr_config(threads, vision_device, language), ocr_dependencies, ready_ocr)
         save(ocr, "ocr.json")
         final_dependencies = {h: {"geometry_sha256": object_hash(normalized[h]), "ocr_sha256": object_hash(semantic_ocr(ocr[h]))}
                               for h in unique}

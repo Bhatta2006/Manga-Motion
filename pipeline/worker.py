@@ -49,15 +49,24 @@ def execute_job(jobs, job, library, runtime, *, importer=None, analyzer=None, co
             jobs.update(job['id'], checkpoint=checkpoint, metrics=metrics)
         else:
             metrics['import_resumed'] = True
+        from pipeline.streaming import StreamingPublisher
+        stream=StreamingPublisher(store,manifest) if manifest.get('import_manifest_version')==1 else None
+        def ready(page):
+            if stream:
+                stream.publish(page)
+                metrics['streaming']=stream.metrics
+                if 'first_readable_seconds' not in metrics:
+                    metrics['first_readable_seconds']=round(time.perf_counter()-started,6)
+                jobs.update(job['id'],metrics=metrics)
         jobs.update(job['id'], phase='analysis', progress={})
-        _, metrics['analysis'] = analyzer(library, job['series'], job['chapter'], runtime, progress=progress)
+        _, metrics['analysis'] = analyzer(library, job['series'], job['chapter'], runtime, progress=progress,page_ready=ready)
         jobs.update(job['id'], metrics=metrics)
         jobs.update(job['id'], phase='camera', progress={})
         _, metrics['camera'] = compiler(library, job['series'], job['chapter'], runtime, progress=progress)
         jobs.update(job['id'], phase='publishing', metrics=metrics)
         info = publisher(store)
         metrics['worker_seconds'] = round(time.perf_counter()-started, 6)
-        metrics['first_readable_seconds'] = metrics['worker_seconds']
+        metrics.setdefault('first_readable_seconds',metrics['worker_seconds'])
         metrics['playback'] = info
         jobs.update(job['id'], status='completed', phase='completed', progress={}, metrics=metrics)
         return True

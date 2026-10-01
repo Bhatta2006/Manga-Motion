@@ -121,11 +121,13 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1g — Incremental page availability (≤2 days)
 
+**Status:** implemented; ordered prefix, retry and real cached job evidence in `reports/M1g.md`. Actual cold streaming/device timing remains unmeasured.
+
 - **Goal:** let reading begin when the first validated page is ready, while later pages finish processing.
 - **Deliverables:** durable per-page ready status, validated incremental playback snapshots, Library/Reader updates as pages become available, interruption/retry recovery without removing finished pages. This closes the explicitly recorded M1d streaming gap.
 - **Files/modules:** `pipeline/{worker.py,analyze_chapter.py,build_motion.py}`, `pipeline/api/{chapters.py,jobs.py}`, `reader/src/{api.ts,library.ts,reader.ts}`, `tests/test_streaming.py`, `reports/M1g.md`.
 - **Tests:** first-page availability before chapter completion; page append in order; failure after one finished page; retry without replaying completed scenes; old saved playback retained; hash/contract validation and single heavy-model residency.
-- **Acceptance checklist:** [ ] first validated page becomes readable before remaining pages finish; [ ] reader adds finished pages in order without forced restart; [ ] incomplete/error states are visible; [ ] retries preserve finished work and original assets; [ ] no model overlap or unapproved MotionScript change.
+- **Acceptance checklist:** [x] first validated page becomes readable before remaining pages finish; [x] reader adds finished pages in order without forced restart; [x] incomplete/error states are visible; [x] retries preserve finished work and original assets; [x] no model overlap or unapproved MotionScript change.
 - **Measurements:** request-to-first-page and full-chapter time, stage seconds/page and VRAM/RAM, append latency, cache hits, reader frame times.
 - **Known risks:** integrating progress with batch stages must retain model load amortization; do not trade streaming for repeated heavy-model loads. Any required contract change needs a concrete proposal and approval first.
 

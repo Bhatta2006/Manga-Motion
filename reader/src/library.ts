@@ -22,9 +22,9 @@ export async function startLibrary(){
     const status=document.createElement('p');status.className=`chapter-status ${chapter.status}`;const job=chapter.job,p=job?.progress;
     status.textContent=chapter.status==='failed'?'Processing failed':job?phaseNames[job.phase]??job.phase:chapter.playable?'Ready to read':'Imported';
     if(chapter.status==='running'&&p?.total)status.textContent+=` · ${p.completed??0}/${p.total} pages${p.state?' · '+p.state:''}`;
-    const meta=document.createElement('p');meta.className='chapter-meta';meta.textContent=`${chapter.pages} pages${chapter.review_flags?' · '+chapter.review_flags+' review notes':''}`;article.append(eyebrow,title,status,meta);
+    const meta=document.createElement('p');meta.className='chapter-meta';meta.textContent=`${chapter.partial?`${chapter.ready_pages}/${chapter.total_pages} pages ready`:`${chapter.pages} pages`}${chapter.review_flags?' · '+chapter.review_flags+' review notes':''}`;article.append(eyebrow,title,status,meta);
     const actions=document.createElement('div');actions.className='chapter-actions';
-    if(chapter.playable){const read=document.createElement('a');read.className='read-link';read.textContent=chapter.status==='completed'?'Read chapter':'Read saved version';read.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter});actions.append(read);}
+    if(chapter.playable){const read=document.createElement('a');read.className='read-link';read.textContent=chapter.partial?'Read ready pages':chapter.status==='completed'?'Read chapter':'Read saved version';read.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter});actions.append(read);}
     if(chapter.status==='failed'&&job){
       const message=document.createElement('p');message.className='job-error';message.textContent=job.error??'Unknown processing error';article.append(message);
       const retry=document.createElement('button');retry.textContent='Retry processing';retry.onclick=async()=>{retry.disabled=true;try{await retryJob(job.id);rendered='';await refresh();}catch(e){error.textContent=String(e);retry.disabled=false;}};actions.append(retry);
