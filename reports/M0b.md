@@ -1,6 +1,6 @@
 # M0b — Visual/SFX-first feel prototype
 
-Date: 2026-10-01. Technical checklist completed for the revised scope. **User feel/comfort judgment remains pending. Stop here; M1 is not started.**
+Date: 2026-10-01. Technical checklist completed for the revised scope. **User subsequently watched and said “pretty good for a v0.” Explicit static-preference/comfort judgment and next-milestone approval remain pending; M1 is not started.**
 
 ## Scope and result
 
@@ -37,7 +37,7 @@ All commands run from `D:\Motion Manga` after `. .\scripts\enter-runtime.ps1`.
 | SFX failures visible / mute | Missing WAV injected only in browser test → `Audio unavailable` visible. Mute sets the SFX bus gain to zero; mute observed including Playwright click/poll overhead in 51 ms | Pass |
 | Parallax only for passing regions or explicit no-go | 30 candidates audited; 0 enabled; rejection reasons saved. Coverage/guard/text tests pass. No inpaint or generated art path | Pass as feasibility no-go; no working manga parallax claimed |
 | No heavy-model overlap / OOM | No model loaded in this slice. Existing scheduler regression tests pass. Cold stages and browser sample record 0 MiB on NVIDIA device | Pass |
-| Subjective better-than-static / comfort | User has not yet watched/judged this preview | **Pending** |
+| Subjective better-than-static / comfort | User watched and gave positive initial feedback; explicit static preference/comfort score not supplied | **Pending** |
 
 Commands and representative outputs:
 
@@ -137,3 +137,8 @@ Full autoplay used Edge's **Intel UHD / ANGLE Direct3D11** renderer. NVIDIA devi
 Preview: **http://127.0.0.1:5173**. Controls and rebuild instructions: [reader/README.md](../reader/README.md).
 
 User action: watch in **Auto play**, compare with **Original page**, and report feel/comfort. **Do not begin the next milestone until the user replies “approved.”**
+
+
+## User feedback after viewing (2026-10-01)
+
+“Pretty good for a v0.” User requires stronger character pop-out depth, story-aware effects plus quiet tonal music, mobile navigation without repeated buttons, and Auto timing proportional to dialogue at reading speed. Recorded in PRD v1.2 / `docs/FINAL_PRODUCT_REQUIREMENTS.md` and future milestone acceptance criteria. These are future requirements, not retrospectively passed M0 features. No next milestone or MotionScript change has started.

@@ -9,12 +9,12 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 | Q03 | Resolved | D-only Python 3.11.9 and pinned Magi stack passed imports, pip check, five-page CUDA inference, and cache replay. | Keep exact lockfile and D cache routing; verify before upgrades. |
 | Q04 | Resolved for five-page sample | Verified pinned weights fit: 2,145 MiB device peak for five-page inference, 2,415 MiB for the OCR diagnostic batch. User waived licensing approval concern for personal use. | New sizes/batches/dependencies require measurement. Magi crop OCR was poor; user-authorized Baberu optimization recovered all 53 crops with documented remaining limits. See reports/M0a-optimization.md. |
 | Q05 | M1 | Source language: Japanese raw, English translation, or both? | Per-series setting as in PRD; infer the first golden-set language only for initial tests, retain both as configuration. Confirm before choosing default OCR/TTS route. |
-| Q06 | M1 | Reading device: phone, tablet, or desktop first? | Phone-first responsive layout because §4 describes phone access; validate on the user's actual device when available. |
+| Q06 | Resolved: mobile first | User explicitly prioritized mobile readers and navigation without repeated button presses. | Plan Flow mode and one-start Auto; actual phone/browser still needed for device trials in M1f/M5. |
 | Q07 | M2 | Are there approved reference clips for principal voices, or should the tool generate designed voices locally? | Use designed/local voices or the user's own clips. Never clone actors or third parties without explicit rights. |
 | Q08 | M2 | Is Fish Audio access desired for expressive lines, and what is the acceptable per-chapter spend? | Fully local route is the baseline. Verify current price, terms, and API behavior before proposing selective Fish calls; do not require it for M2 acceptance. |
 | Q09 | M3 | Which permitted VLM director provider/key should be used, and what privacy/cost limit applies to page images? | Keep an adapter and a local fallback; make no cloud call until the user configures the key and terms are verified. |
 | Q10 | M3 | What is the typical content mix for camera tuning? | Normal/subtle default; calibrate on the 3 test chapters rather than assume action-heavy material. |
-| Q11 | M4 | Can source-only layer parallax be visually clean without inpainting or hiding source pixels? | Feasibility gate; if not, use camera-only motion and log the limitation. |
+| Q11 | M4c1 | How can source-only character layers produce clean pop-out depth on real panels? M0b accepted 0/30 rectangles. | Find/prove safe masks/poses or use original artist layers; unsafe panels fall back, but the overall F01 requirement stays open until real depth is demonstrated. |
 | Q12 | Beyond v1 | Should vertical webtoon/manhwa strips be supported? | Keep out of v1 per PRD non-goals. |
 
 ## Resolved from the supplied PRD and environment
@@ -29,3 +29,11 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - English initial OCR route is now measured: Baberu hybrid GPU vision/CPU decoding. Japanese OCR and independent full-chapter quality remain unevaluated; see D19.
 
 - M0b approved; subsequent user steering replaces narrator work with a visual/SFX-first preview. Voice work remains deferred, with interfaces/events preserved. Parallax remains gated by original-pixel fidelity; see D20 and reports/M0b.md.
+
+## Final-product feedback recorded (2026-10-01)
+
+- User watched M0b and said “pretty good for a v0.” This is positive prototype feedback; it does not establish an explicit better-than-static preference, comfort score or next-milestone approval.
+- F01–F04 in `docs/FINAL_PRODUCT_REQUIREMENTS.md` are required final outcomes: character depth, scene SFX + quiet tonal music, mobile Flow, reading-aware Auto. No new blocking question is needed for this planning update.
+- Music scope is authorized; local library/procedural stems are the low-cost default. A concrete music/layer contract proposal still needs version-bump approval if v1 must change.
+- Provisional pacing is adjustable English 240 wpm plus art time; language-specific manga calibration remains future evaluation. The current 12-second prototype cap is not final acceptance.
+- Actual phone model/browser and a continuous test chapter will be requested when the corresponding device/continuity trial is reached.

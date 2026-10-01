@@ -1,6 +1,6 @@
 # Decisions and proposed PRD amendments
 
-The exact copy at `docs/PRD.md` is the source of truth. “Proposed” below means **not approved**: do not implement that departure until the user approves the plan or the specific change. If source docs, licenses, memory measurements, or APIs disagree with the PRD later, add evidence here and stop before substituting a model or changing the contract.
+`docs/PRD.md` is the evolving source of truth; user-authorized product changes are recorded there. The original uploaded `mangamotion-prd(1).md` is preserved unchanged. “Proposed” below means **not approved**: do not implement that departure until the user approves the plan or the specific change. If source docs, licenses, memory measurements, or APIs disagree with the PRD later, add evidence here and stop before substituting a model or changing the contract.
 
 | ID | Status | Choice and reason |
 |---|---|---|
@@ -47,3 +47,21 @@ After approving M0b, the user explicitly prioritized sound effects, camera motio
 Move a narrow part of M3/M4 feasibility into this approved slice: bounded push/pull/pan recipes, transitions, optional small SFX accents, source-only parallax eligibility. No VLM director, semantic accuracy claim, review UI, full move table or character casting. Own deterministic procedural SFX are a free local starter library behind an adapter; they are preview accents rather than realistic Foley or automatic semantic understanding.
 
 Parallax may only copy original source pixels. A rectangular foreground region can move only if a uniform original-paper guard surrounds it, the transformed rectangle always covers its old position, it stays inside its panel, and it cannot cover text. This conservative gate avoids duplicate subjects and exposed holes without inpainting. Reject unsafe candidates and use camera-only motion; never pretend a flat camera pan is character parallax. References to eligible regions use the PRD's existing `director.focus` kind/ref/bbox fields, without new root fields or a v1 change. Record actual eligibility on the supplied pages.
+
+## D21 — Required perceived depth (user feedback, 2026-10-01)
+
+The final product must make character cutouts feel lifted from the page. Source-only layered depth is a required acceptance goal, not satisfied by the current uniform camera zoom or all-candidate rejection. Keep per-panel safety fallback, but F01 remains unmet until real panels demonstrate artifact-free depth and user comfort. Split M4c into mask/occlusion feasibility and rendering/evaluation. No permission for inpainting or regenerated art was given.
+
+## D22 — Scene-aware SFX and tonal music now in scope
+
+The user explicitly requested quiet, noticeable tonal background music that follows story mood, plus scene-based effects. This supersedes the original PRD's blanket music exclusion. Prefer local tonal stems and owned procedural audio, with adapters, scene continuity, crossfades, independent buses/mutes and ducking. No cloud music API or heavy music generation engine is authorized. Music must not determine panel reading duration. See F02 and new M3d slices.
+
+## D23 — Mobile Flow experience
+
+The user requires mobile scene navigation without repeated button clicks. Resolve the target-device preference to mobile first. Plan scroll-to-direct Flow mode plus one-start Auto, accessible optional controls and user interruption of Auto. Touch scrolling selects/settles a scene; within-panel visuals/audio retain the audio clock. Test an actual phone and prevent repeated SFX triggers, skipped panels and browser gesture conflicts. No sensor permission is required for core navigation. See F03/M1f.
+
+## D24 — Dialogue-aware Auto dwell
+
+The final timer uses dialogue/caption reading length, an adjustable initial English 240 wpm baseline plus art/beat pauses, and later the longer of reading budget or voice duration. The baseline is informed by prose research and needs manga calibration; it is not a proven manga average. Exclude non-reading text; handle OCR failures conservatively. Remove the prototype's arbitrary 12 s cap in the dedicated pacing slice. Preserve the audio master via silent time; music does not extend the dwell. See F04/M1e.
+
+These product requirements are authorized by the user's feedback. The documentation is PRD v1.2; **MotionScript is still v1**. Any necessary music/layer contract extension needs a concrete proposal, version bump and explicit approval before implementation. No next implementation milestone was authorized by this feedback alone.

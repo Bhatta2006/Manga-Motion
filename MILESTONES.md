@@ -10,6 +10,10 @@ Derived from §10 of [`docs/PRD.md`](docs/PRD.md), constrained by the hardware, 
 - Write focused tests and use only real user-supplied golden pages for quality claims. End each slice with `reports/<slice>.md`: exact commands/outputs for each acceptance item, metrics with hardware/input context, deviations, risks, and commits. A subjective user acceptance item is pending until the user actually judges it. Stop after the report.
 - Pin dependencies in `pipeline/requirements.lock` and `reader/package-lock.json` (or equivalent exact lockfiles) when introduced. Keep downloaded models, `.env`, chapter contents, and private audio out of Git. M0a initializes Git because none exists now.
 
+## Final-product additions and execution priorities
+
+User feedback after M0b adds F01–F04 in `docs/FINAL_PRODUCT_REQUIREMENTS.md` / PRD §14. These are required final outcomes, not implemented features. New slices below keep each implementation gate near two working days. After M1 foundations, prioritize M3/M4 visual, scene-audio and depth work before M2 voice-engine work; preserve IDs for traceability and respect dependencies/approval gates. No MotionScript change is approved by this plan update.
+
 ## M0 — Feel test (PRD: approximately 3–4 days)
 
 ### M0a — Runtime, scheduler, and five-page Magi feasibility (≤2 days)
@@ -39,7 +43,7 @@ User approved M0b and then explicitly reprioritized camera, SFX and source-only 
 - **Measurements:** motion/SFX/parallax seconds per page, VRAM/RAM, cold/warm cache, first preview latency, frame time/FPS, sampled visual-clock offset, source/served pixels, accepted/rejected parallax candidates, subjective comfort/feel.
 - **Known risks:** five mixed-series samples are not one chapter. Preview recipes and accents are deterministic heuristics, not semantic directing. Source-only parallax may reject all supplied regions; no generated fill is allowed. No TTS/ASR quality claims.
 
-M0b revised technical scope completed on 2026-10-01; evidence and limits in `reports/M0b.md`. User viewing/comfort judgment remains pending. Stop before M1.
+M0b revised technical scope completed on 2026-10-01; evidence and limits in `reports/M0b.md`. User watched and said “pretty good for a v0,” then specified F01–F04 for the final product. Explicit static-preference/comfort judgment and next-milestone approval remain pending. Stop before M1.
 
 ## M1 — Pipeline and reader skeleton (PRD: 1–2 weeks)
 
@@ -82,6 +86,26 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Acceptance checklist:** [ ] one import request creates a resumable job; [ ] processed pages appear in Library; [ ] the entire supplied chapter can be read in order with panel-to-panel camera; [ ] failure is visible and retryable; [ ] no stage overlap of heavy models.
 - **Measurements:** chapter time, first-page availability, API latency, browser FPS and A/V offset, stage seconds/page and peak VRAM/RAM, cache speedup.
 - **Known risks:** user may supply only partial chapters; mobile device/browser behavior may differ from desktop smoke test.
+
+### M1e — Reading-aware Auto pacing (≤2 days)
+
+- **Goal:** meet F04 independently of speech generation.
+- **Deliverables:** dialogue/caption-only reading budget, adjustable initial English 240 wpm plus art/beat time, no truncating upper cap, conservative OCR-error fallback, audio-clock silent dwell and end-frame holds. Future dialogue audio can extend dwell; music cannot.
+- **Files/modules:** `pipeline/motion/{timing.py,serialize.py}`, `reader/src/{player.ts,pacing-settings.ts}`, `tests/test_timing.py`, `reports/M1e.md`.
+- **Tests:** monotonic 0/10/40/100-word timing; exclusion of SFX/notes; sparse/dense real panels; failed versus truly empty OCR; reading-rate scaling; future speech lower bound; long music cannot extend dwell.
+- **Acceptance checklist:** [ ] more text gives more time under identical conditions; [ ] dense panels exceed 12 s when required; [ ] only dialogue/captions count; [ ] OCR failures flagged with conservative timing; [ ] audio clock preserved; [ ] user can read real dense panels without routine pauses.
+- **Measurements:** words/types per panel, estimated/read-observed dwell, forced pauses/skips, computation seconds/page, VRAM/RAM, cache identity including rate/settings.
+- **Known risks:** prose speed is not manga speed; visual complexity/language and OCR quality need calibration.
+
+### M1f — Mobile Flow and Auto handoff (≤2 days)
+
+- **Goal:** meet F03 without routine scene-advance buttons.
+- **Deliverables:** one-handed vertical scroll-to-direct scene sequence, settle/snap behavior, one-start Auto, tap pause, manual interruption, accessible optional transport and original-page context. No sensor dependency.
+- **Files/modules:** `reader/src/{flow.ts,gestures.ts,player.ts,reader.ts}`, `reports/M1f.md`.
+- **Tests:** RTL/LTR sequence during forward/back scroll; scroll/auto races; activate each audio cue once; pause while dragging; browser zoom/touch conflicts; actual-phone chapter trial.
+- **Acceptance checklist:** [ ] full supplied chapter navigable with zero required Next/Previous button clicks; [ ] no scene skips/repeated SFX; [ ] auto/manual handoff works; [ ] within-panel audio clock retained; [ ] original page and assistive controls accessible.
+- **Measurements:** gestures/transport clicks, accidental skips, handoff latency, actual phone frame times/memory and one-hand comfort.
+- **Known risks:** actual phone needed for usability/performance evidence; default page gestures must be reconciled with Flow.
 
 ## M2 — Voices (PRD: 1–2 weeks)
 
@@ -157,6 +181,36 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Measurements:** SFX routing accuracy, mix levels, seconds/page and VRAM/RAM peak, full chapter time, blind scores and discomfort count, API spend.
 - **Known risks:** three full labeled chapters may not exist yet; SFX overuse can reduce quality, so default should be restrained.
 
+### M3d1 — Music/depth contract proposal (≤1 day; approval gate)
+
+- **Goal:** make necessary scene-spanning audio/layer metadata reviewable before changing v1.
+- **Deliverables:** concrete schema/example diff, reader capability/version strategy, migration and v1 replay plan; proposal only, no feature implementation.
+- **Files/modules:** `docs/proposals/motionscript-music-depth.md`, `schema/proposals/`, `DECISIONS.md`, `reports/M3d1.md`.
+- **Tests:** validate proposed fixtures; show music cannot become panel reading duration; retain existing v1 fixtures and migration round trips.
+- **Acceptance checklist:** [ ] exact proposed fields/events/version documented; [ ] old chapter behavior preserved; [ ] user explicitly approves any version bump before implementation.
+- **Measurements:** proposed artifact size and migration scope; GPU VRAM zero.
+- **Known risks:** current v1 lacks explicit persistent music/layer semantics; product-scope approval is not unseen-schema approval.
+
+### M3d2 — Local mood music cues and library (≤2 days)
+
+- **Goal:** prepare story/mood-aware tonal beds for F02 at low cost.
+- **Deliverables:** local library/procedural provider adapter, scene mood/energy cue map, continuity/fallback rules, cached cue/audio preparation. No heavy music model or new cloud service.
+- **Files/modules:** `pipeline/audio/{music_library.py,music_cues.py}`, `pipeline/adapters/music.py`, `library/music/manifest.json`, `reports/M3d2.md`.
+- **Tests:** labeled scene/mood selection; uncertain-cue fallback; same-scene continuity; deterministic assets/cache; asset provenance and loop-boundary checks.
+- **Acceptance checklist:** [ ] inspectable mood/scene cue map on real material; [ ] coherent bed across adjacent panels; [ ] low-confidence choices reviewable; [ ] every asset local and recorded; [ ] one-model residency preserved if the director runs.
+- **Measurements:** mood/cue accuracy, uncertain rate, audio build seconds/page/clip, VRAM/RAM and cache/disk cost.
+- **Known risks:** mood inference can be wrong; five mixed pages cannot prove story continuity.
+
+### M3d3 — Tonal music mixing and immersive audio evaluation (≤2 days)
+
+- **Goal:** make music audible but unobtrusive and synchronized with scene progression.
+- **Deliverables:** separate music/ambience/SFX/voice buses, scene crossfades/looping, ducking, levels/mutes, pause/resume/manual-seek behavior, subjective device trial.
+- **Files/modules:** `reader/src/{music.ts,mixer.ts,player.ts}`, `pipeline/audio/mix.py`, `reports/M3d3.md`.
+- **Tests:** no resets each panel, no clicks/clipping, bus/mute/duck envelopes, pause/seek/scene-change continuity, music duration excluded from panel dwell, silent mode.
+- **Acceptance checklist:** [ ] correct scene/mood bed plays locally; [ ] same-scene transitions continuous; [ ] no clicks/clipping; [ ] music never holds up reading timer; [ ] user judges it noticeable, immersive and quiet enough on actual device; [ ] independent controls work.
+- **Measurements:** loudness/true peak, ducking/crossfade envelope, reader frame/CPU/memory cost, mood match and distraction ratings.
+- **Known risks:** physical output level varies by device; final gains require listening. Depends on approved M3d1 contract if fields change.
+
 ## M4 — Review/Fix UX and source-only 2.5D (PRD: about 2 weeks)
 
 ### M4a — Review queue and quick correction (≤2 days)
@@ -179,15 +233,25 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Measurements:** gesture latency, A/V/glow offset, FPS, memory use, correction time, pixel integrity.
 - **Known risks:** text boxes may overlap; touch behavior on the target device needs direct validation.
 
-### M4c — Parallax feasibility and gated implementation (≤2 days)
+### M4c1 — Source-only character masks and occlusion feasibility (≤2 days)
 
-- **Goal:** test whether subtle parallax can use only original source pixels without artifacts.
-- **Deliverables:** source-only masked layer transform prototype on a few opt-in panels; occlusion/difference audit; enable only passing panels, otherwise document a no-go and use camera-only motion.
-- **Files/modules:** `pipeline/layers/{masks.py,integrity.py}`, `reader/src/parallax.ts`, `library/<series>/<chapter>/cache/layers.json`, `reports/M4c.md`.
-- **Tests:** no inpaint/AI-redrawn pixel path, 1–2% translation cap, layer boundary/occlusion visual review, source-image hash unchanged.
-- **Acceptance checklist:** [ ] source pixels and original files remain unchanged; [ ] no generated fill is visible; [ ] only approved panels receive parallax; [ ] disabling parallax restores exact camera-only rendering; [ ] if feasibility fails, the no-go is recorded and no compromised effect ships.
-- **Measurements:** accepted/rejected panel count, displacement, visual artifact count, build seconds/page, VRAM/RAM peak, FPS impact.
-- **Known risks:** a cutout can expose duplicate subject pixels beneath it; strict fidelity may make useful parallax impossible.
+- **Goal:** find real panels that support clean layered character depth for F01.
+- **Deliverables:** verified/pinned segmentation adapter, original-pixel masks/layer assets, per-pose coverage/occlusion proof, text-plane protection and visual audits. No inpainting or invented background.
+- **Files/modules:** `pipeline/adapters/segmenter.py`, `pipeline/layers/{masks.py,integrity.py}`, `library/<series>/<chapter>/cache/layers.json`, `reports/M4c1.md`.
+- **Tests:** source/layer pixel provenance, old-silhouette coverage, exposed-hole/duplicate/seam audit through motion, preserved text, sequential model residency/cache invalidation.
+- **Acceptance checklist:** [ ] eligible real panels demonstrated with original-source pixels; [ ] no generated fill; [ ] no visible duplicates/holes/seams in allowed poses; [ ] uncertain/unsafe panels flagged; [ ] measured 6 GB fit. An all-panel no-go leaves F01 unmet and requires a documented next proposal.
+- **Measurements:** accepted/rejected panels, mask/pose artifact counts, build seconds/page, VRAM/RAM, coverage and asset size.
+- **Known risks:** hidden background is absent from scans; a mask alone cannot recover it. Original artist layers may be needed for some scenes.
+
+### M4c2 — Pop-out depth rendering and user evaluation (≤2 days)
+
+- **Goal:** characters visibly feel lifted from the page while remaining comfortable and faithful.
+- **Deliverables:** foreground/background depth planes, bounded differential motion and perspective/scale, camera-linked motion, optional touch interaction, Reduce motion and camera-only fallback; real-panel depth evaluation.
+- **Files/modules:** `reader/src/{parallax.ts,depth-controls.ts,camera.ts}`, `pipeline/layers/poses.py`, `reports/M4c2.md`.
+- **Tests:** source textures unchanged, old pose fully covered, 1–2% translation cap, preserved ink/text, reduce-motion behavior, actual-phone frame/memory test and layer edge visual review.
+- **Acceptance checklist:** [ ] distinct character depth demonstrated on real panels; [ ] user depth and comfort scores ≥4/5; [ ] no exposed/duplicated subject or background fill; [ ] bubble readability maintained; [ ] Reduce motion restores flat reading; [ ] unsafe panels fall back explicitly. Whole-page zoom does not satisfy this slice.
+- **Measurements:** depth/comfort ratings, artifact counts, amplitude, FPS/memory cost, seconds/page and VRAM/RAM for any preparation stage.
+- **Known risks:** not every scan permits clean parallax; layer metadata may require the approved contract extension. Device tilt is optional with touch fallback.
 
 ## M5 — Polish (PRD: about 1 week)
 
@@ -217,6 +281,6 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Deliverables:** pinned/verified Remotion + FFmpeg export path, resolution/FPS controls, sync comparison, final 3-chapter A/B and acceptance report.
 - **Files/modules:** `reader/export/{render.ts,config.ts}`, `pipeline/export.py`, `reports/M5c.md`.
 - **Tests:** reader-versus-export timeline parity, frame sampling and source-art integrity, A/V offset, export resume/failure, three-chapter subjective A/B.
-- **Acceptance checklist:** [ ] MP4 renders from existing MotionScript v1; [ ] no `zoompan` micro-jitter path or regenerated art; [ ] A/V error <40 ms in tested output; [ ] 60 FPS reader target measured on device; [ ] on three test chapters the user chooses motion at least 70% of the time with no discomfort incidents, or the unmet criterion is reported honestly.
+- **Acceptance checklist:** [ ] F01–F04 demonstrated on real chapters and actual mobile hardware (including real character depth, appropriate tonal music, button-free advancement and readable Auto pacing); [ ] MP4 renders from the approved MotionScript contract version; [ ] no `zoompan` micro-jitter path or regenerated art; [ ] A/V error <40 ms in tested output; [ ] 60 FPS reader target measured on device; [ ] on three test chapters the user chooses motion at least 70% of the time with no discomfort incidents, or the unmet criterion is reported honestly.
 - **Measurements:** export seconds/page and peak RAM/VRAM, output size, frame/FPS stability, A/V offset, reader FPS, motion-preference percentage, chapter readiness time versus §8 targets.
 - **Known risks:** Remotion/FFmpeg may be CPU-heavy; subjective targets need the user's real viewing and enough chapters.

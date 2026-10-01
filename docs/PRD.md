@@ -1,8 +1,10 @@
 # MangaMotion: Product Requirements Document
 
-*Personal tool · v1.1 · 30 Sep 2026 · private use only, no distribution*
+*Personal tool · v1.2 · 1 Oct 2026 · private use only, no distribution*
 
-**Target hardware (v1.1): RTX 4050 Laptop GPU, 6 GB VRAM.** See §5.7 (voice engines) and §8 (VRAM plan). Nothing here assumes more than 6 GB is free at once.
+Product requirements updated from user feedback after M0b. MotionScript remains v1; this document version is separate from the data contract.
+
+**Target hardware (v1.2): RTX 4050 Laptop GPU, 6 GB VRAM.** See §5.7 (voice engines) and §8 (VRAM plan). Nothing here assumes more than 6 GB is free at once.
 
 **One-liner:** Turn any manga chapter into a motion-comic experience (context-aware camera moves, per-character AI voices, sound effects) while keeping the original art pixels untouched.
 
@@ -34,7 +36,7 @@
 4. Errors (wrong speaker, bad OCR, wrong order) are **visible and fixable in seconds**.
 5. Always one gesture away from the original page.
 
-**Non-goals (v1):** generative video or redrawing; colorization; public release or sharing; multi-user; webtoon/manhwa vertical-strip mode (parked, see open questions); background music generation.
+**Non-goals (v1):** generative video or redrawing; colorization; public release or sharing; multi-user; webtoon/manhwa vertical-strip mode (parked, see open questions); heavy or cloud background music generation. Quiet local tonal music that follows scene mood is now in scope; see §14.
 
 **Success criteria (personal):** across 3 test chapters (dialogue-heavy, action-heavy, gag), you choose motion mode over static reading at least 70% of the time, with no motion-discomfort incidents, and a chapter is ready to read within about 15 minutes of import.
 
@@ -61,8 +63,9 @@
 ### 3.2 Reader modes
 | Mode | Behavior |
 |---|---|
-| **Tap-paced** (default) | Each tap advances one beat. Motion and voice play for the panel, then wait for you. You control pace like reading, but with life. |
-| **Anime** | Auto-plays continuously on the audio clock. Tap to pause. |
+| **Tap-paced** (desktop default / optional mobile) | Each tap advances one beat. Motion and voice play for the panel, then wait for you. You control pace like reading, but with life. |
+| **Anime / Auto** | Auto-plays on the audio clock; dwell follows dialogue/caption reading time plus art inspection, and later voice duration. Tap to pause. See §14/F04. |
+| **Flow (mobile default)** | Vertical thumb scroll selects the next/previous scene in manga reading order; camera transitions settle naturally, without repeated transport-button clicks. See §14/F03. |
 | **Silent** | Camera glides panel-to-panel with subtle motion, no voices. For public places. |
 | **Classic** | Plain static page reader. |
 
@@ -82,6 +85,7 @@
 - **Dub/Sub toggle** if the source is Japanese raw: hear original-language voices or the translated language.
 
 ### 3.5 Timing rules (defaults, tunable)
+- Auto dwell must scale with dialogue/caption reading length, with a tunable initial English 240 wpm baseline plus art-inspection/beat time. Do not impose an upper cap that prevents reading dense dialogue. This is a starting setting, not a measured manga average; see §14/F04 and its research source. Later speech duration sets a lower bound; music duration never determines panel dwell.
 - Gap between lines in the same panel: 120 ms; across speakers: 350 ms; after an SFX: 200 ms; panel tail: 300 to 600 ms.
 - Silent panel dwell = `clamp(0.8 + 0.6 × visual_complexity, 0.8, 2.5)` s. Splash pages: 2.5 to 4 s.
 
@@ -266,11 +270,12 @@ Keyframes are `{t, cx, cy, scale}` in page coordinates.
 
 ### 5.8 SFX and ambience
 - Onomatopoeia text (classified as SFX in 5.3) → LLM maps to a category (impact, whoosh, footsteps, door, heartbeat, rain…) → lookup in a **local SFX library** (CC0/licensed packs; `video-shotcraft` ships a categorized set with license URLs) → fallback generate with **Stable Audio Open** (up to 47 s clips).
-- Mixing: SFX at about −6 dB under voice, ambience beds low, and duck ambience during lines. Music is out of scope for v1.
+- Mixing: SFX at about −6 dB under voice, ambience beds low, and duck ambience during lines. Quiet tonal music following story mood is now in scope (§14/F02): local stems/procedural tones, separate bus, scene continuity, crossfades, mutes and ducking. No new cloud music API or heavy music generation model is authorized.
 
 ### 5.9 2.5D layers (phase 2, opt-in per panel)
+- Final acceptance requires character cutouts to feel lifted from the page, with distinct depth planes, not just a whole-page zoom. Preserve source pixels and test seams/occlusion/text visibility. See §14/F01; camera-only fallback on unsafe panels does not close the overall depth requirement.
 - The Director flags panels where characters separate cleanly from the background.
-- **Character cutout** via SAM with Magi's character box as prompt → **inpaint the hole** (LaMa, bundled in manga-image-translator) → two layers.
+- **Character cutout:** verify a segmentation adapter using Magi character boxes, then use only original source pixels in layered transforms. The original LaMa/inpaint proposal is superseded by the art-fidelity hard constraint and D06: no invented background fill. Prove coverage/occlusion safety or use original artist-provided layers; otherwise keep that panel camera-only.
 - **Parallax** = tiny differential translation (≤ 1 to 2% of width) plus scale delta between layers, synchronized with the camera move.
 - **Depth-map displacement** (Depth Anything V3 / Depth Pro / DepthFlow) is an *experiment only*. Depth on black-and-white line art is unreliable and warps the linework. Keep amplitude tiny or skip.
 - **Bubble sequencing** (hide bubbles until spoken) is a stretch goal. Default stays glow-only to preserve the page.
@@ -502,3 +507,15 @@ Estimates assume one developer working alongside a coding agent.
 - Standard tooling not separately researched: PixiJS, GSAP, Remotion, SAM 2, LaMa, faster-whisper, FFmpeg
 
 *Caveat: model rankings and speed figures above come from third-party roundups and vendor READMEs, not from my own testing. The M0/M1/M2 spikes exist to verify them on your chapters.*
+
+
+## 14. Required final-product experience — user feedback, 1 Oct 2026
+
+The user watched M0b and described it as “pretty good for a v0.” The following are now final-product requirements, detailed with acceptance criteria in [FINAL_PRODUCT_REQUIREMENTS.md](FINAL_PRODUCT_REQUIREMENTS.md):
+
+1. **F01 / perceived character depth:** source-only character cutouts must feel lifted from the page, with clean layered parallax. A whole-page zoom or an all-panel no-go does not satisfy final depth acceptance.
+2. **F02 / scene audio:** context-appropriate effects and a quiet, noticeable tonal music bed that follows current story mood, with continuity across scenes and unobtrusive mixing. This authorizes local tonal music scope; it does not authorize a new cloud music API.
+3. **F03 / mobile Flow:** one-handed scroll navigation and one-start Auto eliminate routine Next/Previous button presses, with reliable manual/auto handoff and original-page access.
+4. **F04 / reading-aware Auto:** more dialogue/caption text gives more time, using adjustable reading speed plus art inspection. No arbitrary upper cap cuts off dense dialogue. Music does not delay scene changes.
+
+These requirements take precedence over the earlier blanket music exclusion and desktop/tap defaults. Source-art preservation, D-only downloads, one heavy model at a time, adapter boundaries and permitted cloud scope still apply. Voice work stays a later priority. Any necessary MotionScript extension requires a concrete version-bump proposal and the user's approval before implementation. This feedback does not start the next milestone.
