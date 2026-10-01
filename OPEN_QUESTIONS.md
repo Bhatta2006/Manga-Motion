@@ -27,3 +27,5 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - At Step 1 there was no Git repository or golden set. Git is now initialized and five real pages have been measured; see reports/M0a.md.
 
 - English initial OCR route is now measured: Baberu hybrid GPU vision/CPU decoding. Japanese OCR and independent full-chapter quality remain unevaluated; see D19.
+
+- M0b approved; subsequent user steering replaces narrator work with a visual/SFX-first preview. Voice work remains deferred, with interfaces/events preserved. Parallax remains gated by original-pixel fidelity; see D20 and reports/M0b.md.

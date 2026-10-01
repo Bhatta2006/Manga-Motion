@@ -8,3 +8,7 @@ library/
 models/
 reports/*.json
 reports/*-private.md
+reports/*-private.png
+reader/node_modules/
+reader/dist/
+reader/.vite/

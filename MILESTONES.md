@@ -27,15 +27,17 @@ M0a checks completed on 2026-10-01; see `reports/M0a.md`. Feasibility passes, bu
 
 User-authorized M0a optimization follow-up completed on 2026-10-01: staged Magi detection + specialist Baberu OCR, 2.8480 s/page mean, all 53 crops return text. See `reports/M0a-optimization.md`. Small tuned-set quality results are not M1 acceptance. Stop for M0b approval.
 
-### M0b — Five-page playable feel prototype (≤2 days)
+### M0b — Visual/SFX-first five-page feel prototype (≤2 days)
 
-- **Goal:** make the smallest watchable fixed-motion sequence and obtain the user's feel judgment.
-- **Deliverables:** deterministic Ken Burns keyframes per detected panel; Kokoro narrator audio for available text; minimal MotionScript v1 serialization/validation; bare PixiJS page with tap/auto playback from audio time; five-page preview.
-- **Files/modules:** `pipeline/adapters/kokoro.py`, `pipeline/motion/fixed.py`, `pipeline/motion/serialize.py`, `schema/motionscript-v1.schema.json`, `reader/src/{main.ts,player.ts,camera.ts}`, `reader/package-lock.json`, `library/<series>/<chapter>/motionscript.json`, `reports/M0b.md`.
-- **Tests:** schema validation; camera bounds and active-bubble visibility on golden pages; audio/keyframe timing test; browser playback smoke test; decoded source/served page pixel comparison.
-- **Acceptance checklist:** [ ] five pages playable in order with original art intact; [ ] one tap advances one beat; [ ] audio is the visual clock; [ ] narrator lines play or failed lines are visibly flagged; [ ] zero model overlap/OOM; [ ] user watches the sequence and records whether it feels better than static reading (pending user judgment).
-- **Measurements:** narration synthesis seconds/line and seconds/page, peak VRAM/RAM, first playable page latency, frame time/FPS, A/V offset, page pixel comparison, subjective score/comments.
-- **Known risks:** the PRD says “one chapter” but M0 inputs only five pages; preliminary feel may not generalize. Kokoro voice/language support must be verified before use.
+User approved M0b and then explicitly reprioritized camera, SFX and source-only parallax over voice/dialogue. This scope supersedes the original narrator prototype; see D20.
+
+- **Goal:** make a watchable visual motion sequence, keeping audio/voice architecture ready for later work.
+- **Deliverables:** bounded push/pull/pan recipes, panel/page transitions, local procedural SFX adapter, source-only parallax safety gate with passing regions only, MotionScript v1 schema/serialization, PixiJS tap/auto reader, original-page toggle and reduce motion.
+- **Files/modules:** `pipeline/motion/{fixed.py,serialize.py}`, `pipeline/layers/integrity.py`, `pipeline/adapters/{sfx.py,tts_base.py}`, `pipeline/m0_preview.py`, `pipeline/preview_server.py`, `schema/motionscript-v1.schema.json`, `reader/src/{main.ts,player.ts,camera.ts,parallax.ts}`, `reader/package-lock.json`, `library/preview/m0b/{pages,sfx,motionscript.json,cache}`, `reports/M0b.md`.
+- **Tests:** v1 schema and future line event validation; camera interpolation/comfort/text visibility; deterministic PCM/timing; pause/replay/navigation; pixel/hash identity; parallax coverage/guard rejection; real browser playback and frame measurements.
+- **Acceptance checklist:** [ ] five pages / 25 panels playable in detected order; [ ] original art preserved; [ ] tap advances one panel, auto/pause/replay/classic work; [ ] visuals and SFX follow Web Audio time; [ ] SFX failures visible and mute works; [ ] parallax enabled only on passing regions or explicit no-go; [ ] zero new heavy model/OOM; [ ] user judges motion versus static (pending viewing).
+- **Measurements:** motion/SFX/parallax seconds per page, VRAM/RAM, cold/warm cache, first preview latency, frame time/FPS, sampled visual-clock offset, source/served pixels, accepted/rejected parallax candidates, subjective comfort/feel.
+- **Known risks:** five mixed-series samples are not one chapter. Preview recipes and accents are deterministic heuristics, not semantic directing. Source-only parallax may reject all supplied regions; no generated fill is allowed. No TTS/ASR quality claims.
 
 ## M1 — Pipeline and reader skeleton (PRD: 1–2 weeks)
 
