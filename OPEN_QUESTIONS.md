@@ -7,7 +7,7 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 | Q01 | Resolved | The user said “start with the implementation,” authorizing M0a after the Step 1 plan. | Execute M0a only, then stop for the next approval. |
 | Q02 | Resolved for M0a | Five readable supplied English/RTL pages benchmarked; mixed series, not a continuous chapter. A sixth mislabeled AVIF was preserved and excluded. | See reports/M0a.md. Use independent sample order for M0; obtain a continuous chapter for later continuity evaluation. |
 | Q03 | Resolved | D-only Python 3.11.9 and pinned Magi stack passed imports, pip check, five-page CUDA inference, and cache replay. | Keep exact lockfile and D cache routing; verify before upgrades. |
-| Q04 | Resolved for five-page sample | Verified pinned weights fit: 2,145 MiB device peak for five-page inference, 2,415 MiB for the OCR diagnostic batch. User waived licensing approval concern for personal use. | New sizes/batches/dependencies require measurement. Crop OCR quality is poor; see report. |
+| Q04 | Resolved for five-page sample | Verified pinned weights fit: 2,145 MiB device peak for five-page inference, 2,415 MiB for the OCR diagnostic batch. User waived licensing approval concern for personal use. | New sizes/batches/dependencies require measurement. Magi crop OCR was poor; user-authorized Baberu optimization recovered all 53 crops with documented remaining limits. See reports/M0a-optimization.md. |
 | Q05 | M1 | Source language: Japanese raw, English translation, or both? | Per-series setting as in PRD; infer the first golden-set language only for initial tests, retain both as configuration. Confirm before choosing default OCR/TTS route. |
 | Q06 | M1 | Reading device: phone, tablet, or desktop first? | Phone-first responsive layout because §4 describes phone access; validate on the user's actual device when available. |
 | Q07 | M2 | Are there approved reference clips for principal voices, or should the tool generate designed voices locally? | Use designed/local voices or the user's own clips. Never clone actors or third parties without explicit rights. |
@@ -25,3 +25,5 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - Art: no generative redraw or inpainted replacements under the user's hard constraint; D05/D06 need plan approval because the PRD contains conflicting optional paths.
 - WSL2: installed command is not presently usable. Native Windows is the initial route, pending Q03.
 - At Step 1 there was no Git repository or golden set. Git is now initialized and five real pages have been measured; see reports/M0a.md.
+
+- English initial OCR route is now measured: Baberu hybrid GPU vision/CPU decoding. Japanese OCR and independent full-chapter quality remain unevaluated; see D19.

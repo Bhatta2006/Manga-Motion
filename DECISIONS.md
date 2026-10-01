@@ -31,3 +31,11 @@ Immediately before first use, read current official README/docs/model card and l
 Measured: five-page Magi detection/crop OCR fits the 4050 at 2,145 MiB peak and 4.3879 s/page mean after load, with 5/5 cache hits on replay. Only 14/53 crops return text, including errors. Empty results are explicitly flagged; nonempty results remain unverified. A raw-output diagnostic confirms empty generation rather than an adapter decoding loss.
 
 Decision: retain Magi for detection feasibility and retain the PRD's planned specialist English OCR evaluation in M1. This is a measured limitation, not approval to introduce another model in M0a or change MotionScript. The PRD's ≤3 s/page target is unmet by this baseline. M0b must expose/flag failed lines and must not treat this OCR as reliable narration text. No new dependency or API was introduced.
+
+## D19 — Approved English OCR optimization follow-up (2026-10-01)
+
+User authorization: “hardware upgrade isnt possible, so go with optimal implementation strategies.” This supersedes D18's deferral of specialist OCR evaluation for this narrow remediation. Evaluated the PRD's Baberu locally on the same five pages and selected pinned ONNX FP16 vision on CUDA + INT8 decoder on CPU with four threads. Keep the two heavy model stages sequential: Magi detection → unload/clear → Baberu OCR → unload/clear. No MotionScript or art contract change.
+
+Final observed inference mean is 2.8480 s/page versus baseline 4.3879 (35.1% reduction). Peak device VRAM: detection 2,145 MiB, following OCR 395 MiB. All 53 crops return text. On the private exploratory reference set, dialogue lexical WER is 0/195 and dialogue+caption WER 6/244 (2.46%), with punctuation excluded. These tuned five pages do not establish general accuracy. Caption/SFX errors and first-page >3 s latency remain. Full five-page processing including loads is 26.7928 s.
+
+English tall-crop splitting at blank gaps recovers the demonstrated long-line truncation; it is not a Japanese vertical-text default. CPU vision remains selectable. Unsupported confidence is null. Canonical source/text-box/model/runtime/config cache identity makes all ten page-stage outputs reusable without reloading models. See reports/M0a-optimization.md for evidence and pins. M0b remains behind its approval gate.

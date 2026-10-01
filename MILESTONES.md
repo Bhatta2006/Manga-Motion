@@ -25,6 +25,8 @@ Derived from §10 of [`docs/PRD.md`](docs/PRD.md), constrained by the hardware, 
 
 M0a checks completed on 2026-10-01; see `reports/M0a.md`. Feasibility passes, but English crop OCR quality and the ≤3 s target do not. These are documented limits, not accepted quality claims.
 
+User-authorized M0a optimization follow-up completed on 2026-10-01: staged Magi detection + specialist Baberu OCR, 2.8480 s/page mean, all 53 crops return text. See `reports/M0a-optimization.md`. Small tuned-set quality results are not M1 acceptance. Stop for M0b approval.
+
 ### M0b — Five-page playable feel prototype (≤2 days)
 
 - **Goal:** make the smallest watchable fixed-motion sequence and obtain the user's feel judgment.
