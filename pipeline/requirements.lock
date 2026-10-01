@@ -1,6 +1,7 @@
 # Exact Windows/Python 3.11.9 environment; OCR optimization verified 2026-10-01.
 # Keep all package, model, and temp paths on D. Do not install CPU and GPU ORT together.
 --extra-index-url https://download.pytorch.org/whl/cu121
+-r requirements-api.lock
 certifi==2026.7.22
 charset-normalizer==3.5.2
 cloudpickle==3.1.2

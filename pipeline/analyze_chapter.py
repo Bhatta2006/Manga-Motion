@@ -70,7 +70,7 @@ def semantic_ocr(record: dict) -> dict:
 
 def analyze_chapter(library: Path, series: str, chapter: str, runtime: Path,
                     threads: int = 4, vision_device: str = "cuda",
-                    detection_adapter=None, ocr_factory=None) -> tuple[dict, dict]:
+                    detection_adapter=None, ocr_factory=None, progress=None) -> tuple[dict, dict]:
     store = ChapterStore(library, series, chapter)
     if runtime.resolve().drive.upper() != "D:" or not runtime.is_dir():
         raise ImportFailure("Dot-source scripts/enter-runtime.ps1; runtime must exist on D:")
@@ -98,7 +98,7 @@ def analyze_chapter(library: Path, series: str, chapter: str, runtime: Path,
 
         def run(adapter, config=None, dependencies=None):
             try:
-                output, metrics = scheduler.run_pages(adapter, pages, config, dependencies)
+                output, metrics = scheduler.run_pages(adapter, pages, config, dependencies, progress=progress)
             except StageExecutionError as exc:
                 stage_metrics.append(exc.metrics)
                 write_json(store.asset("cache/analysis-last-failure.json"), {"stages": stage_metrics, "error": str(exc)})

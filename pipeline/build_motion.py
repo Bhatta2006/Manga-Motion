@@ -20,7 +20,7 @@ from pipeline.store import ChapterStore, read_json, write_json
 
 
 def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, duration=2.0,
-                 validator=validate_contract) -> tuple[dict, dict]:
+                 validator=validate_contract, progress=None) -> tuple[dict, dict]:
     store = ChapterStore(library, series, chapter)
     if runtime.resolve().drive.upper() != 'D:' or not runtime.is_dir():
         raise ImportFailure('Dot-source scripts/enter-runtime.ps1; runtime must exist on D:')
@@ -54,7 +54,7 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         dependencies = {h: {'analysis_sha256': object_hash(r)} for h, r in records.items()}
         scheduler = StageScheduler(runtime, VerifiedCameraCache(store.asset('cache/stages')))
         outputs, stage = scheduler.run_pages(CameraAdapter(records, duration), list(unique.values()),
-                                            config={'duration': duration}, page_configs=dependencies)
+                                            config={'duration': duration}, page_configs=dependencies, progress=progress)
         mapped = dict(zip(unique, outputs))
         script = {'version': 1, 'chapter': f'{series}/{chapter}', 'direction': analysis['direction'],
                   'characters': {}, 'pages': []}
