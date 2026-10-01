@@ -13,7 +13,7 @@ Outputs:
 
 - `library/<series>/series.json`: per-series settings.
 - `library/<series>/<chapter>/sources/<sha256>.*`: byte-identical originals, including archive/PDF containers. Image originals use `.image`; decoding identifies the actual format.
-- `pages/<sha256>.<format>`: exact original image bytes; PDF pages are lossless PNGs of the recorded PDFium render.
+- `pages/<sha256>.<format>`: exact original image bytes for browser-supported formats; TIFF receives a pixel-identical lossless PNG. PDF pages are lossless PNGs of the recorded PDFium render.
 - `cache/ingest/*.json` and `cache/ingest-pdf/*.json`: page verification/render records, keyed by source hash, adapter revision and settings.
 - `import.json`: ordered page index with byte hashes, decoded RGB pixel hashes, sizes, source names, fidelity mode and cache keys. This is an **import manifest**, separate from MotionScript v1.
 

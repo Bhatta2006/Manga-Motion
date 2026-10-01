@@ -49,13 +49,15 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1a — Import and page cache (≤2 days)
 
+**Status:** implemented and verified after the user's “ok continue” authorization; awaiting approval before M1b. Evidence: `reports/M1a.md`.
+
 - **Goal:** ingest CBZ/ZIP, PDF, and folders without changing source art.
 - **Deliverables:** import validation, per-series settings, lossless page-serving path, SHA-256 page index, safe archive/PDF handling, resumable stage cache.
 - **Files/modules:** `pipeline/ingest/{archive.py,pdf.py,pages.py,hashes.py}`, `pipeline/cache.py`, `pipeline/store.py`, `library/<series>/<chapter>/{pages,cache}`, `reports/M1a.md`.
 - **Tests:** format fixtures from user pages; path traversal/reject corrupt archive; source-versus-served decoded pixels; cache invalidation when source or settings change.
-- **Acceptance checklist:** [ ] all three inputs import; [ ] original assets remain byte-identical; [ ] served raster pixels match decoded originals where applicable; [ ] page hashes stable; [ ] repeated imports reuse cache; [ ] errors name the affected page.
+- **Acceptance checklist:** [x] all three inputs import; [x] original assets remain byte-identical; [x] served raster pixels match decoded originals where applicable; [x] page hashes stable; [x] repeated imports reuse cache; [x] errors name the affected page. All items have evidence in `reports/M1a.md`; PDF comparison uses the pinned rasterizer output, not a nonexistent single source raster.
 - **Measurements:** import seconds/page, disk bytes/page, RAM and VRAM peak (expected zero GPU), cache hit/miss counts.
-- **Known risks:** PDF rendering has no source raster to compare directly; archive filenames/order may be ambiguous; disk space is about 77.6 GiB free at planning.
+- **Known risks:** PDF rendering has no source raster to compare directly; archive filenames/order may be ambiguous; 65.87 GiB disk space observed before final report. Versioned originals/caches are retained; cleanup is future work. Pathological PDF complexity is not bounded by pixel/page-count limits.
 
 ### M1b — Panels, reading order, and OCR (≤2 days)
 

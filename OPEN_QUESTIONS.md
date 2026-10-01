@@ -37,3 +37,9 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - Music scope is authorized; local library/procedural stems are the low-cost default. A concrete music/layer contract proposal still needs version-bump approval if v1 must change.
 - Provisional pacing is adjustable English 240 wpm plus art time; language-specific manga calibration remains future evaluation. The current 12-second prototype cap is not final acceptance.
 - Actual phone model/browser and a continuous test chapter will be requested when the corresponding device/continuity trial is reached.
+
+## M1a continuation (2026-10-01)
+
+- User's “ok continue” authorizes M1a only. Folder/CBZ/PDF import, source preservation, settings and page cache are verified; no current import blocker needs a question. See `reports/M1a.md`.
+- Initial RTL/English defaults are explicit and overridable per series; M1a does not choose an untested OCR/TTS language route. PDF resolution is recorded/configurable.
+- A continuous chapter, real phone, semantic SFX/music, perceived depth and uncapped reading-aware Auto remain later acceptance work. Approval is needed before starting M1b.

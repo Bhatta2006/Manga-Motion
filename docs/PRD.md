@@ -119,9 +119,11 @@ flowchart LR
 ## 5. Pipeline modules
 
 ### 5.1 Ingest
-- Accept CBZ/ZIP/PDF/folder → normalized WebP pages, SHA-256 per page (cache key for everything downstream).
-- **Optional upscale** (waifu2x/ESRGAN family; manga-image-translator exposes these) so 1.3x camera zoom doesn't look soft on low-res scans.
+- Accept CBZ/ZIP/PDF/folder → immutable original assets and SHA-256 indexed serving pages (cache key for everything downstream). As approved in D05, serve original image bytes where the browser supports them; use pixel-identical lossless PNG for TIFF. Keep PDF containers untouched and render one page at a time to lossless PNG at a recorded resolution (initial default 144 dpi).
+- No ingest upscale or generated fill under the original-pixel hard constraint; use source-resolution camera limits.
 - Per-series config: reading direction, source language, target language.
+
+M1a is implemented and verified on the five supplied pages in folder, CBZ and PDF fixtures. See `reports/M1a.md` for acceptance evidence, measured timings, RAM/VRAM and supported-input limits. This produces an import manifest, separate from MotionScript v1; later slices connect it to chapter processing and the reader.
 
 ### 5.2 Panels and reading order
 - **Primary:** Magi v3 (detects panels; ordering via its transcript logic).
@@ -426,6 +428,16 @@ Everything the reader needs is in this file. It is the contract between pipeline
 | Playback | 60 fps on a mid-range phone; A/V sync error < 40 ms |
 
 *Targets, not measurements.*
+
+**Measured M1a import (1 October 2026):** five real pages, native Windows/Python 3.11.9, pinned Pillow/PDFium; no models or APIs. Cold means an empty application import cache, not a cold OS filesystem cache.
+
+| Input | Mean cold page work | Five-page import elapsed | Warm page-cache hits | Peak process RAM | Sampled NVIDIA VRAM peak |
+|---|---|---|---|---|---|
+| Folder | 0.030713 s/page | 1.906695 s | 5/5 | 58 MiB | 0 MiB |
+| CBZ | 0.029288 s/page | 0.865751 s | 5/5 | 58 MiB | 0 MiB |
+| PDF, 144 dpi | 0.146580 s/page | 1.034257 s | 5/5 | 63 MiB | 0 MiB |
+
+Page work includes copying/validation/cache publication; import elapsed also includes container setup, telemetry, final hash checks and manifest publication, but excludes Python process startup. RAM is the OS-reported fresh-process lifetime peak, rounded to MiB, which captures allocations missed by interval sampling. These are single observations on a small format fixture, not full-chapter throughput guarantees. See `reports/M1a.md` for warm timings and disk use.
 
 ---
 
