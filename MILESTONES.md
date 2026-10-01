@@ -85,13 +85,15 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1d — Chapter job and tap-paced Library/Reader (≤2 days)
 
+**Status:** implemented and verified on the supplied five-page set after “okayy continue”; evidence in `reports/M1d.md`. Complete chapters publish atomically; incremental page streaming remains an explicitly unmet final-product requirement. Stop before M1e.
+
 - **Goal:** import and read a chapter end to end with pipeline status and panel camera moves.
 - **Deliverables:** FastAPI chapter/job endpoints, SQLite job table/worker, simple Library page, tap-paced PixiJS reader and local service, integration wiring.
 - **Files/modules:** `pipeline/api/{app.py,chapters.py,jobs.py}`, `pipeline/worker.py`, `pipeline/db.py`, `reader/src/{library.ts,reader.ts,api.ts}`, `reports/M1d.md`.
 - **Tests:** job resume/failure integration test; full golden chapter import/play smoke test; tap navigation and direction test; local API contract test.
-- **Acceptance checklist:** [ ] one import request creates a resumable job; [ ] processed pages appear in Library; [ ] the entire supplied chapter can be read in order with panel-to-panel camera; [ ] failure is visible and retryable; [ ] no stage overlap of heavy models.
+- **Acceptance checklist:** [x] one import request creates a resumable job; [x] processed pages appear in Library; [x] the entire supplied five-page set can be read in order with panel-to-panel camera (not a continuous chapter quality claim); [x] failure is visible and retryable; [x] no stage overlap of heavy models.
 - **Measurements:** chapter time, first-page availability, API latency, browser FPS and A/V offset, stage seconds/page and peak VRAM/RAM, cache speedup.
-- **Known risks:** user may supply only partial chapters; mobile device/browser behavior may differ from desktop smoke test.
+- **Known risks:** only five mixed pages are supplied; mobile device/browser behavior may differ from desktop smoke test. Current atomic whole-chapter publication does not stream newly completed pages; first-page readiness equals chapter readiness. Streaming remains required and must be included in a future approved slice before final acceptance.
 
 ### M1e — Reading-aware Auto pacing (≤2 days)
 

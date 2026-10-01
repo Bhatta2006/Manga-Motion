@@ -101,3 +101,36 @@ Protect the entire panel plus every assigned text box, with explicit text-overfl
 M1c's 2 s camera extent plus existing 0.4 s tail is provisional for tap-paced playback; it does not replace M1e's reading-aware Auto requirements. Text-box height audits at named CSS viewports flag potential small text below a provisional 24 px. This is not measured glyph size or final phone readability; nine boxes are flagged at 390×600. No assertion that widening enlarges glyphs is made. Actual-device readability remains a later acceptance gate.
 
 Use the reader's pinned AJV and unchanged shared schema from Python through a Node stdin validator, plus geometry/timing/reference checks before publication and before reader initialization. Avoid divergent schema validators. Missing Node/dependencies, stale input metadata, nonfinite/degenerate geometry, invalid paths, overlapping/discontinuous cameras and unknown speakers fail explicitly. Camera payload checksums repair accidental parseable cache damage. Recheck metadata/source hashes before atomic publication so failures keep the last complete script. These are bounded safeguards against tested failures, not a promise covering every future input/runtime.
+
+## D29 — M1d durable local jobs and isolated worker
+
+The user's “okayy continue” authorizes M1d only. Use minimal, pinned FastAPI/
+Uvicorn packages and the built-in SQLite library; no Redis, cloud service or
+resident model server. A coordinator supervises one child process per chapter.
+The child takes an OS worker lock before recovering/claiming a job; heavy stages
+retain their existing separate scheduler lock and load/run/unload/CUDA cleanup.
+Process exit also releases framework memory. A live orphan worker's lock prevents
+another API instance from treating it as interrupted. Resume once automatically
+after interruption; a repeated crash needs explicit Retry to avoid a restart loop.
+
+SQLite checkpoints retain the completed import hash and stage metrics; retries
+verify the manifest and reuse page/config/model-hash caches. Requests are JSON
+local D-drive paths for the existing folder/CBZ/ZIP/PDF importer, deduplicated
+while active. Windows capitalization aliases cannot enqueue conflicting jobs.
+Strict request fields, same-origin browser writes, loopback bind and explicit
+asset allowlists protect the local import surface. No chapter source/cache/key
+file is exposed through arbitrary paths.
+
+Publish immutable, checksum-protected playback snapshots outside MotionScript
+v1. The reader uses snapshot-specific image/audio URLs; opening/rerunning another
+chapter does not mutate the contract or invalidate an already opened script.
+Asset responses serve exactly the bytes whose SHA-256 was checked. Keep previous
+valid playback available on failed reprocessing. Library jobs expose useful
+status/progress/error fields rather than every private stage payload.
+
+Current stages publish complete chapters atomically, as M1b/M1c already do. The
+five-page M1d acceptance checklist passes, but **PRD incremental page streaming
+is not implemented or waived**. First-page readiness is measured as complete
+chapter readiness; streaming needs an approved follow-up slice before final
+acceptance. Do not call the current reader a streaming reader. No new voice,
+semantic SFX, tonal music, depth or reading-aware Auto feature is claimed.

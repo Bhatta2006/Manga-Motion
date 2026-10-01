@@ -58,3 +58,11 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - The user's instruction to avoid future errors is addressed through concrete tested guards. It is not interpreted as a guarantee that all future inputs/dependencies/devices are error-free.
 - Actual glyph size/readability needs the target phone and a measured readable-text threshold; text-box proxies flag nine small boxes at 390×600, without claiming unreadability or a font-size pass. This remains visible for the planned mobile/readability trial; no art is regenerated or other text cropped to mask it.
 - M1d's chapter job/Library wiring and M1e's reading-aware Auto remain unstarted. Stop for approval of the reported M1c scope and its limits.
+
+## M1d continuation (2026-10-01)
+
+- The user's “okayy continue” approved the reported M1c scope/limits and authorized M1d. Local import jobs, durable checkpoints/retries, the Library and immutable reader URLs are now tested. See `reports/M1d.md`; no new model, voice or cloud call was introduced.
+- Full five-page cold request-to-readable time is 52.178 s; cached repeat 4.160 s. Heavy inference averages 4.86034 s/page, still above the ≤3 s target. AC was online throughout; this is not an isolated battery/power comparison.
+- All 25 panels pass desktop and mobile-viewport navigation; actual phone usability/FPS/external A/V sync remain unmeasured. Legacy SFX still plays through the new API asset URLs.
+- Complete chapters publish atomically. First-page availability equals chapter availability; incremental page streaming remains an unmet final-product requirement, not a waived PRD item. Add it to an approved follow-up slice before final acceptance.
+- Stop for M1d approval. M1e reading-aware Auto remains unstarted.

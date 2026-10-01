@@ -389,6 +389,19 @@ Everything the reader needs is in this file. It is the contract between pipeline
 
 ## 8. Performance and hardware (RTX 4050 Laptop, 6 GB)
 
+**Measured M1d end-to-end jobs (1 October 2026):** on the same five supplied
+pages with AC online, request-to-readable time is **52.178 s cold** and **4.160 s
+warm**, including worker startup/queue/poll overhead. Heavy inference averages
+**4.86034 s/page**, above the ≤3 s target; model loads add 22.084 s (Magi) and
+0.6056 s (Baberu). Sampled device peaks: **2,145 MiB Magi**, **393 MiB Baberu**;
+sampled worker RAM peaks: 2,583 / 1,851 MiB. Warm stage caches hit 25/25 with zero
+model loads. Cold means empty application caches, not a cold OS filesystem cache.
+The API stays responsive in a separate process. Current chapter publication is
+atomic; **first-page streaming is still unimplemented** and the 52.178 s first
+readable-page result equals complete-chapter readiness. Desktop/headless frame
+measurements do not establish actual-phone FPS or external A/V synchronization.
+Evidence and detailed stage metrics: `reports/M1d.md`.
+
 **The card:** the RTX 4050 exists only as a laptop GPU with 6 GB GDDR6 on a 96-bit bus, and its power limit ranges from 35 to 115 W depending on the laptop, so speed varies a lot by model and power mode. Run the pipeline plugged in, in performance mode. Recommended: 16 GB system RAM or more.
 
 **Can everything run together? No, but each stage fits alone.** Rules:
