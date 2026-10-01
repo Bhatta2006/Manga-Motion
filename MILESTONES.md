@@ -115,6 +115,16 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Measurements:** gestures/transport clicks, accidental skips, handoff latency, actual phone frame times/memory and one-hand comfort.
 - **Known risks:** actual phone needed for usability/performance evidence; default page gestures must be reconciled with Flow.
 
+### M1g — Incremental page availability (≤2 days)
+
+- **Goal:** let reading begin when the first validated page is ready, while later pages finish processing.
+- **Deliverables:** durable per-page ready status, validated incremental playback snapshots, Library/Reader updates as pages become available, interruption/retry recovery without removing finished pages. This closes the explicitly recorded M1d streaming gap.
+- **Files/modules:** `pipeline/{worker.py,analyze_chapter.py,build_motion.py}`, `pipeline/api/{chapters.py,jobs.py}`, `reader/src/{api.ts,library.ts,reader.ts}`, `tests/test_streaming.py`, `reports/M1g.md`.
+- **Tests:** first-page availability before chapter completion; page append in order; failure after one finished page; retry without replaying completed scenes; old saved playback retained; hash/contract validation and single heavy-model residency.
+- **Acceptance checklist:** [ ] first validated page becomes readable before remaining pages finish; [ ] reader adds finished pages in order without forced restart; [ ] incomplete/error states are visible; [ ] retries preserve finished work and original assets; [ ] no model overlap or unapproved MotionScript change.
+- **Measurements:** request-to-first-page and full-chapter time, stage seconds/page and VRAM/RAM, append latency, cache hits, reader frame times.
+- **Known risks:** integrating progress with batch stages must retain model load amortization; do not trade streaming for repeated heavy-model loads. Any required contract change needs a concrete proposal and approval first.
+
 ## M2 — Voices (PRD: 1–2 weeks)
 
 ### M2a — Speaker attribution and persistent character identities (≤2 days)
@@ -292,3 +302,22 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 - **Acceptance checklist:** [ ] F01–F04 demonstrated on real chapters and actual mobile hardware (including real character depth, appropriate tonal music, button-free advancement and readable Auto pacing); [ ] MP4 renders from the approved MotionScript contract version; [ ] no `zoompan` micro-jitter path or regenerated art; [ ] A/V error <40 ms in tested output; [ ] 60 FPS reader target measured on device; [ ] on three test chapters the user chooses motion at least 70% of the time with no discomfort incidents, or the unmet criterion is reported honestly.
 - **Measurements:** export seconds/page and peak RAM/VRAM, output size, frame/FPS stability, A/V offset, reader FPS, motion-preference percentage, chapter readiness time versus §8 targets.
 - **Known risks:** Remotion/FFmpeg may be CPU-heavy; subjective targets need the user's real viewing and enough chapters.
+
+### M5d — Side-space visual polish after core delivery (≤2 days)
+
+- **Goal:** make smaller frames feel intentional and visually consistent (F05), after the main experience is complete.
+- **Deliverables:** reviewed surround designs for unused frame space, restrained default and plain-background option, mobile/desktop layout integration; preserve original art and camera framing.
+- **Files/modules:** `reader/src/{surround.ts,style.css,reader.ts}`, `reader/tests/surround-smoke.mjs`, `reports/M5d.md`.
+- **Tests:** narrow/wide/square/irregular frames, source/hash/text visibility, overlay separation, Reduce motion, overflow, texture disposal and frame-time comparison.
+- **Acceptance checklist:** [ ] user approves appearance across different panel sizes; [ ] unused space has a coherent treatment; [ ] no panel stretching/cropping or invented background art; [ ] no added distraction/overflow; [ ] plain surround and Reduce motion work.
+- **Measurements:** actual-device frame/CPU/memory cost, layout overflow, visual consistency/distraction feedback, GPU VRAM and build cost if any preparation stage is used.
+- **Known risks:** decoration can distract from manga or resemble duplicated art. Choose the actual design after the core product is usable.
+
+## Remaining scope after M1d feedback
+
+Current plan: **21 unfinished slices**. **17** cover the current visual/audio/mobile
+scope including streaming and later side-space polish; **4** voice slices (M2a–d)
+remain deferred, not removed. The 17 comprise M1e–g (3), M3a–d3 (6), M4a–c2 (4)
+and M5a–d (4). These are counts, not a completion-date estimate. Outstanding real
+device/independent quality acceptance from completed foundations also remains.
+Each slice retains its approval gate; next implementation is M1e.

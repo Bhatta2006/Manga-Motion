@@ -21,6 +21,9 @@ try{
   for(const viewport of [{width:1280,height:900},{width:390,height:844}]){
     await page.setViewportSize(viewport);await page.goto(base);await card().locator('a').click();await ready();
     assert.equal((await diag()).panels,25);const visited=[];
+    assert.equal(await page.locator('#sfx').isDisabled(),true);
+    assert.equal(await page.locator('#sfx').isChecked(),false);
+    assert.ok((await page.locator('#mode').textContent()).includes('Auto (preview)'));
     for(let index=0;index<25;index++){
       if(index){await page.locator('#stage').click({position:{x:15,y:40}});await ready();}
       await page.waitForFunction(i=>window.mangaMotionDiagnostics?.index===i&&window.mangaMotionDiagnostics?.renderedRect?.every(Number.isFinite),index);
@@ -60,6 +63,7 @@ try{
   await card().locator('a').click();await ready();assert.equal((await diag()).panels,25);
   // The original SFX preview must still work with immutable API asset URLs.
   await page.goto(base+'/?series=preview&chapter=m0b');await ready();
+  assert.equal(await page.locator('#sfx').isDisabled(),false);
   const legacyInfo=await (await context.request.get(base+'/api/chapters/preview/m0b/playback')).json();
   const legacyScript=await (await context.request.get(base+legacyInfo.script_url)).json();
   const firstSfx=legacyScript.pages.flatMap(p=>p.panels).findIndex(p=>p.timeline.some(e=>e.type==='sfx'));

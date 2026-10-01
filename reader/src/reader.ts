@@ -122,6 +122,12 @@ async function init() {
   const data=await response.json();const validate=new Ajv({allErrors:true}).compile(schema);
   script=validateMotionScript(data,validate) as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
   document.querySelector('.study')!.textContent=`${script.pages.length} pages · original art`;
+  const hasSfx=script.pages.some(p=>p.panels.some(panel=>panel.timeline.some(event=>event.type==='sfx')));
+  const sfxControl=$('sfx') as HTMLInputElement;
+  sfxControl.disabled=!hasSfx;sfxControl.checked=hasSfx;
+  sfxControl.parentElement!.title=hasSfx?'Play this chapter’s sound effects':'This chapter has no sound effects yet';
+  if(!hasSfx){sfxControl.parentElement!.lastChild!.textContent='No SFX';audio.sfxGain.gain.value=0;}
+  ($('mode') as HTMLSelectElement).options[1].textContent='Auto (preview)';
   depth=script.pages.some(p=>p.panels.some(panel=>panel.director.focus.some(f=>f.ref==='parallax-safe')));
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';

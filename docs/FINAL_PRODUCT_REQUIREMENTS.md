@@ -56,6 +56,25 @@ Only intentional scene pauses/visual inspection affect dwell; music loops do not
 
 **Current prototype limitation:** it uses all associated OCR text at roughly 180 wpm, adds a base hold and caps at 12 seconds. That heuristic does **not** meet the final F04 requirement.
 
+## F05 — Side-space treatment after core delivery
+
+Added 2026-10-02 from the user's follow-up.
+
+The user's follow-up identifies inconsistent empty space around panels of
+different aspect ratios. After the core experience is complete, design a coherent
+surround for smaller/narrower frames. This is planned polish, not an implemented
+feature or a reason to crop/stretch panels or regenerate missing artwork.
+
+Recommended starting design: a quiet ambient gradient or subtle abstract ink
+pattern in the unused space outside the art, with optional mood tint once scene
+metadata exists. Keep the main panel/text clear and the surround unobtrusive;
+preview the actual design before choosing it. Allow a plain surround and respect
+Reduce motion. Test narrow, wide, square and irregular panels on desktop and phone.
+
+Acceptance: the user approves visual consistency and lack of distraction; no
+source pixels, camera bounds or text visibility change; no texture leak, layout
+overflow or material frame-time regression. Schedule as M5d after core delivery.
+
 ## Delivery and contract gates
 
 | Requirement | Planned slices |
@@ -65,6 +84,7 @@ Only intentional scene pauses/visual inspection affect dwell; music loops do not
 | F02 scene-aware effects | M3a + M3c |
 | F02 tonal music and scene continuity | M3d1 contract proposal, M3d2 cue/library preparation, M3d3 reader mixing |
 | F01 source-only pop-out depth | M4c1 mask/occlusion feasibility, M4c2 depth rendering and user evaluation |
+| F05 unused side-space polish | M5d, after core delivery |
 
 After M1 foundations, prioritize visual/mood-audio/depth slices over voice engine work, consistent with the user's earlier steering. Milestone IDs stay stable for traceability; dependencies and each approval gate still apply.
 

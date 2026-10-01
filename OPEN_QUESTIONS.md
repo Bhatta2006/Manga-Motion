@@ -66,3 +66,19 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 - All 25 panels pass desktop and mobile-viewport navigation; actual phone usability/FPS/external A/V sync remain unmeasured. Legacy SFX still plays through the new API asset URLs.
 - Complete chapters publish atomically. First-page availability equals chapter availability; incremental page streaming remains an unmet final-product requirement, not a waived PRD item. Add it to an approved follow-up slice before final acceptance.
 - Stop for M1d approval. M1e reading-aware Auto remains unstarted.
+
+## Feedback after M1d (2026-10-02)
+
+- The user correctly identifies that dialogue-based Auto timing, real character
+  cutout depth and scene SFX remain missing. Current Library chapters contain
+  camera events only; the older M0b sounds are a procedural preview. These are
+  not completed final features. Reader controls now distinguish chapters without
+  SFX and label the current Auto as a preview.
+- Recorded F05/M5d for unused side-space treatment after the core experience;
+  original panels must not be stretched/cropped or given invented background.
+- Added M1g to give the unmet streaming requirement an explicit delivery slice.
+  There are 21 remaining slices: 17 for current visual/audio/mobile scope and
+  later side polish, plus four deferred voice slices. No completion-date guarantee
+  follows from the count; actual-device/quality evaluation gates remain.
+- This feedback is not treated as approval to begin a later milestone. M1e is
+  next, under the user's original one-milestone-at-a-time approval instruction.
