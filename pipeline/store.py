@@ -7,6 +7,7 @@ import json
 import os
 import re
 import uuid
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import BinaryIO, Iterator
@@ -23,17 +24,30 @@ def write_json(path: Path, value: dict) -> None:
         with temp.open("w", encoding="utf-8") as handle:
             json.dump(value, handle, ensure_ascii=False, sort_keys=True, indent=2)
             handle.write("\n")
-        os.replace(temp, path)
+        # Windows readers briefly open without FILE_SHARE_DELETE. Retain the
+        # atomic replace, retry only observed sharing/access errors, and expose
+        # persistent failure instead of deleting the previous valid artifact.
+        for attempt in range(41):
+            try:
+                os.replace(temp, path)
+                break
+            except PermissionError as exc:
+                if getattr(exc,'winerror',None) not in (5,32,33) or attempt==40:raise
+                time.sleep(.025)
     finally:
         temp.unlink(missing_ok=True)
 
 
 def read_json(path: Path) -> dict | None:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-        return value if isinstance(value, dict) else None
-    except (OSError, ValueError):
-        return None
+    for attempt in range(41):
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            return value if isinstance(value, dict) else None
+        except PermissionError as exc:
+            if os.name!='nt' or (getattr(exc,'winerror',None) not in (5,32,33) and exc.errno!=13) or attempt==40:return None
+            time.sleep(.025)
+        except (OSError, ValueError):
+            return None
 
 
 def safe_id(value: str) -> str:
