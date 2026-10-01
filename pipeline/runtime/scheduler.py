@@ -37,7 +37,7 @@ def _device_memory_mib() -> int | None:
         return None
 
 
-def _process_ram_mib() -> int | None:
+def _process_ram_mib(peak: bool = False) -> int | None:
     if os.name != "nt":
         return None
     from ctypes import wintypes
@@ -68,7 +68,7 @@ def _process_ram_mib() -> int | None:
     handle = ctypes.windll.kernel32.GetCurrentProcess()
     if not ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
         return None
-    return round(counters.WorkingSetSize / 2**20)
+    return round((counters.PeakWorkingSetSize if peak else counters.WorkingSetSize) / 2**20)
 
 
 class DeviceMemorySampler:
