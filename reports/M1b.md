@@ -4,6 +4,8 @@ Date: 1 October 2026. Authorized by the user's “continue with the next work.�
 
 **Status:** implementation verified; quality thresholds met on the provisional five-page reference subset. M1b remains open for approval of D26: the verified models do not supply calibrated confidence scores. PRD §2 is unchanged. Stop before M1c.
 
+**Subsequent approval:** the user answered the milestone/D26 request with “continue,” authorizing the explicit-unavailable confidence exception and M1c. The original measurements and reference limitations below remain unchanged; calibration is deferred, not completed. PRD §2 and D26 now record that approval.
+
 ## Built
 
 - `pipeline/analyze_chapter.py` connects M1a imports to four sequential adapters: Magi detection, CPU geometry/order, Baberu crop OCR, CPU text metadata. Each heavy model unloads and clears CUDA before another loads.

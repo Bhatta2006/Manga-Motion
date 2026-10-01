@@ -26,7 +26,7 @@ Ordering recursively splits horizontal bands, then RTL/LTR columns, using 2% int
 
 Text retains OCR provenance, original detection index, crop/segment boxes, raw text, normalized whitespace/NFC text, panel assignment and essential-model hints. Binary essential flags are not semantic dialogue/SFX labels. Text `kind` remains `unknown`; translator notes outside panel bounds are review items, not automatically counted as reading candidates. Speaker associations remain raw provenance; character identity/voices are deferred.
 
-Confidence remains `null`/uncalibrated because the verified public inference APIs do not provide calibrated probabilities. Page-level detector/OCR warnings are explicit; this is **not numerical confidence calibration**. D26 proposes the documented exception and needs approval before declaring that PRD goal closed. Quality scores against supplied labels are separate from per-item confidence.
+Confidence remains `null`/uncalibrated because the verified public inference APIs do not provide calibrated probabilities. Page-level detector/OCR warnings are explicit; this is **not numerical confidence calibration**. The user approved D26's documented exception when authorizing M1c. Numeric calibration remains deferred. Quality scores against supplied labels are separate from per-item confidence.
 
 Quality evaluation uses maximum-cardinality one-to-one panel matching at a declared IoU threshold, complete-page order equality, and dialogue lexical WER. Fallback panels do not score as successful detections. Missing dialogue crops count as deletions. Metrics explicitly disclose reference method, unlabeled crop count and the fact that crop WER does not measure full-page text-detection recall.
 

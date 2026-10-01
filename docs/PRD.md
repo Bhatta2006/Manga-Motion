@@ -46,7 +46,7 @@ Product requirements updated from user feedback after M0b. MotionScript remains 
 1. **Never hide or alter the art.** Bubbles are never cropped unless a deliberate reveal.
 2. **Audio is the clock.** Visuals follow voice.
 3. **Restraint beats spectacle.** Most panels get subtle motion. Big moves are earned by high energy.
-4. **Confidence is first-class.** Every detection carries a score. Low scores are flagged, not silently trusted.
+4. **Confidence is first-class.** Use calibrated scores when the verified adapter provides them. If it does not, confidence is explicitly unavailable (`null`) with review flags; never invent a probability or silently treat absence as certainty. Low scores are flagged. Numeric calibration requires an independent labeled set and remains deferred under user-approved D26.
 5. **Swap-friendly.** Every model sits behind an adapter. The TTS field in particular is moving weekly.
 
 ---
@@ -131,7 +131,7 @@ M1a is implemented and verified on the five supplied pages in folder, CBZ and PD
 - Validate: panels should cover ≥ 70% of the page area (else flag); order sanity check (RTL, no overlaps); full-page splash gets a single "panel".
 - **Manual override** is a drag-to-fix UI in the Review queue. Corrections are saved and become your golden-set labels.
 
-**M1b implementation evidence (1 October 2026):** imported pages now produce normalized detections, bounded RTL/LTR order, crop-only OCR and review reasons. The verified Magi detector method does not itself invoke transcript sorting; the implementation uses a bounded page-cut solver with explicit ambiguity flags (D27). Five supplied RTL pages yield 25 panels and 53 text crops. Provisional engineer labels score 25/25 panels at IoU ≥0.5, 5/5 whole-page order and 0/195 dialogue word edits; these are not blind/independent accuracy claims. The models omit calibrated confidence; D26 proposes an exception, pending approval, so §2's numerical confidence goal remains open. See `reports/M1b.md`.
+**M1b implementation evidence (1 October 2026):** imported pages now produce normalized detections, bounded RTL/LTR order, crop-only OCR and review reasons. The verified Magi detector method does not itself invoke transcript sorting; the implementation uses a bounded page-cut solver with explicit ambiguity flags (D27). Five supplied RTL pages yield 25 panels and 53 text crops. Provisional engineer labels score 25/25 panels at IoU ≥0.5, 5/5 whole-page order and 0/195 dialogue word edits; these are not blind/independent accuracy claims. The models omit calibrated confidence; the user approved D26's explicit-unavailable exception when authorizing M1c. Numerical calibration remains deferred. See `reports/M1b.md`.
 
 ### 5.3 Text detection and fast OCR
 **Flow:** detect text boxes once per page (Magi v3; `comic-text-detector` as fallback) → **crop bubbles only** (8 px pad) → **batch OCR on GPU** → confidence gate → VLM re-read for anything below threshold.
@@ -213,6 +213,8 @@ Keyframes are `{t, cx, cy, scale}` in page coordinates.
 **Hard constraints (motion comfort):** max scale 1.4x; max sustained zoom rate 0.6x per second (punch-ins excepted); max sustained pan speed about 1.2 panel-widths per second (whip pans excepted); ≤ 3 impact shakes per page; **Reduce motion** disables shake, whip, and punch-in. Focus target stays inside the central 60% of the viewport. Bubble text must remain at least a minimum on-screen size, or the camera widens.
 
 **Transitions:**
+
+M1c implements a restrained CPU solver with original page/text protection, analytic scale/speed bounds and pre-publication/reader validation, without VLM direction. Candidate glides exceeding sustained comfort limits become cuts; page boundaries use fades. Text-box size is audited as a proxy only; actual glyph readability on the target phone remains unverified. See D28 and `reports/M1c.md`; the full move table remains M3 work.
 
 | Situation | Transition | Duration |
 |---|---|---|
@@ -442,6 +444,8 @@ Everything the reader needs is in this file. It is the contract between pipeline
 Page work includes copying/validation/cache publication; import elapsed also includes container setup, telemetry, final hash checks and manifest publication, but excludes Python process startup. RAM is the OS-reported fresh-process lifetime peak, rounded to MiB, which captures allocations missed by interval sampling. These are single observations on a small format fixture, not full-chapter throughput guarantees. See `reports/M1a.md` for warm timings and disk use.
 
 **Measured M1b analysis (1 October 2026):** Magi inference mean 3.54452 s/page; Baberu mean 2.99416 s/page; combined heavy inference **6.53868 s/page**, missing the ≤3 s target in this observation. Initial five-page all-stage cold elapsed **72.6336 s** including 36.0131 s Magi loading. Final CPU revisions were recomputed separately while reusing identical heavy outputs. Final fully warm replay: **0.2891 s**, 20/20 stage-page hits, no model loads. Sampled process RAM peaks: Magi 2,804 MiB, Baberu 1,818 MiB; current CPU geometry/text stages 38/47 MiB in separate processes. Device sampling interval 0.2 s may miss short peaks; warm memory is unmeasured. Earlier M0 optimization was faster at 2.8480 s/page; the regression's cause is not isolated. AC offline was observed after the cold run; new power telemetry supports future comparisons. Full metrics, revision context, quality-label limits and confidence approval gate: `reports/M1b.md`.
+
+**Measured M1c camera build (1 October 2026):** CPU solver mean 0.00118 s/page on the same five pages, sampled NVIDIA peak 0 MiB and parent process peak 21 MiB. Full five-page build 1.889602 s cold / 0.219026 s cached, including shared-reader validation; 5/5 warm stage hits. All 25 within-panel paths satisfy tested geometry/numeric comfort bounds; actual-phone glyph readability remains unverified, with nine small text-box proxy flags at 390×600 CSS. No model/API or schema-version change. See `reports/M1c.md` for exact commands, sampling limits, browser evidence and pending reading/device work.
 
 ---
 

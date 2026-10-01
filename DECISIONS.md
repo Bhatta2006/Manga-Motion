@@ -76,13 +76,13 @@ Use natural filename ordering with an explicit inferred-order review note, or do
 
 This import manifest is independent of MotionScript. No schema change, voice model, director API, reader flow, music or depth feature is introduced in M1a. Full tests pass and measurements replace ingest assumptions in PRD §8; stop for M1b approval.
 
-## D26 — Proposed M1b confidence exception; approval required
+## D26 — Approved M1b confidence exception
 
 Source verification confirms that the pinned Magi and Baberu public methods return thresholded geometry/class hints and text, **not calibrated per-panel/per-text confidence probabilities**. This is the anticipated D17 limitation. M1b cannot honestly satisfy PRD §2's numeric confidence goal from those public outputs or from five tuned sample pages. Panel/OCR accuracy measurements against labels are not per-item confidence calibration.
 
-Recommended exception: retain the existing `null` confidence representation, attach explicit detector/OCR confidence-unavailable warnings plus concrete geometry/text/order review reasons, and defer numeric calibration until a separate, independently labeled validation set exists. Do not substitute token probabilities, IoU, binary essential flags or a hand-written heuristic score as a calibrated confidence. Keep uncertain results reviewable. The current implementation is an interim artifact under the existing adapter contract; the PRD's numeric confidence goal remains open.
+Approved exception: retain the existing `null` confidence representation, attach explicit detector/OCR confidence-unavailable warnings plus concrete geometry/text/order review reasons, and defer numeric calibration until a separate, independently labeled validation set exists. Do not substitute token probabilities, IoU, binary essential flags or a hand-written heuristic score as a calibrated confidence. Keep uncertain results reviewable. The implementation uses the existing adapter contract; numerical calibration remains deferred under the revised PRD principle.
 
-**Await explicit approval of this exception before changing PRD §2 or declaring M1b fully closed.** The user's “continue with the next work” authorized M1b implementation, not an invented confidence metric. MotionScript v1 remains unchanged; no cloud fallback/model substitution or voice work is introduced.
+Initially proposed for approval at the end of M1b. The user answered that approval request with “continue” and requested stronger error prevention, authorizing this exception and M1c. PRD §2 now permits explicit unavailable confidence with review flags when verified adapters do not return calibrated scores. Numerical calibration itself remains deferred and unachieved. MotionScript v1 remains unchanged; no cloud fallback/model substitution or voice work is introduced.
 
 ## D27 — M1b ordering and text metadata implementation
 
@@ -91,3 +91,13 @@ Use Magi detections behind the existing adapter; normalize only geometry/metadat
 Use exact rectangle union for the PRD's 70% coverage check. Preserve original detector indices, raw associations, OCR crops and model essential flags. A binary essential flag cannot provide a final dialogue/caption/SFX/sign class; retain `unknown` kinds rather than guessing. OCR reads only detected padded text crops, rejecting whole-page crops before the engine. Direction changes invalidate only geometry/metadata. A settings change does not trigger new model inference when relevant model inputs are identical.
 
 Measured cold inference is slower than the prior M0 observation with the same model/runtime settings. Windows reports AC offline after the run; its contribution is not isolated. Record actual timings, retain earlier measurements and add read-only power telemetry for future matched comparisons. No power settings or model versions are changed.
+
+## D28 — M1c bounded camera and validation decisions
+
+The user's subsequent “continue” authorizes M1c only, including preventing concrete failure modes; it cannot guarantee zero future errors. Compile M1b imports to the existing v1 schema without adding fields. Prefix local panel/text IDs by page, retain review details outside the contract, and leave unavailable confidence null under D26. Use CPU-only adapters, original serving assets and analysis-hash stage caches.
+
+Protect the entire panel plus every assigned text box, with explicit text-overflow bleed and at most 4% additional width/height margin clipped to the source. The target is that protected union's center; it remains in the central 60%, while each text box remains visible. Restrained push/pull/pan rules do not claim scene semantics. Use analytic sustained speed/scale bounds and cuts where a 400 ms transition glide would exceed them. Hold ambiguous/fallback panels; emit no shake, whip or punch-in. Reduce motion holds the first frame.
+
+M1c's 2 s camera extent plus existing 0.4 s tail is provisional for tap-paced playback; it does not replace M1e's reading-aware Auto requirements. Text-box height audits at named CSS viewports flag potential small text below a provisional 24 px. This is not measured glyph size or final phone readability; nine boxes are flagged at 390×600. No assertion that widening enlarges glyphs is made. Actual-device readability remains a later acceptance gate.
+
+Use the reader's pinned AJV and unchanged shared schema from Python through a Node stdin validator, plus geometry/timing/reference checks before publication and before reader initialization. Avoid divergent schema validators. Missing Node/dependencies, stale input metadata, nonfinite/degenerate geometry, invalid paths, overlapping/discontinuous cameras and unknown speakers fail explicitly. Camera payload checksums repair accidental parseable cache damage. Recheck metadata/source hashes before atomic publication so failures keep the last complete script. These are bounded safeguards against tested failures, not a promise covering every future input/runtime.

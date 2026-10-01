@@ -48,6 +48,13 @@ The PRD's §12 questions are tracked here. Items are ordered by the first milest
 
 - M1a commits were pushed to the user-provided `Bhatta2006/Manga-Motion` GitHub repository. M1b connects imports to detection, ordered panels, crop OCR and durable intermediate artifacts; no reader/voice/contract change. See `reports/M1b.md`.
 - English/RTL is the measured initial route. Other source languages fail before model loading until their adapters are evaluated. Real LTR/continuous chapters and the actual phone remain later evaluation inputs.
-- **Current approval gate — D26:** verified Magi/Baberu APIs do not supply calibrated confidence. Recommended exception: retain `null` scores, explicit confidence-unavailable warnings and concrete review reasons; defer numerical calibration to an independently labeled validation set. PRD §2 remains open until approved. This is the only current dependency proposal requiring a decision.
+- **Resolved approval gate — D26:** verified Magi/Baberu APIs do not supply calibrated confidence. The user answered the M1b approval request with “continue,” approving `null` scores, explicit unavailable warnings and concrete review reasons while deferring numerical calibration to an independently labeled set. PRD §2 now records this exception; calibration itself remains unachieved.
 - Provisional five-page panel/order/dialogue quality thresholds pass; independent accuracy is not established. Cold detection+OCR measured 6.53868 s/page; final fully cached replay 0.2891 s. Battery operation was observed after the cold run, without isolating the slowdown's cause.
-- Stop for confidence-exception and M1b approval before M1c.
+- The same user reply authorizes M1c; no new models/cloud calls are needed.
+
+## M1c continuation (2026-10-01)
+
+- M1c builds v1 camera output from actual imported/analyzed pages and checks it before publication and reader initialization. Existing schema fields/version are unchanged. Failure-path/cache/property/browser evidence is in `reports/M1c.md`.
+- The user's instruction to avoid future errors is addressed through concrete tested guards. It is not interpreted as a guarantee that all future inputs/dependencies/devices are error-free.
+- Actual glyph size/readability needs the target phone and a measured readable-text threshold; text-box proxies flag nine small boxes at 390×600, without claiming unreadability or a font-size pass. This remains visible for the planned mobile/readability trial; no art is regenerated or other text cropped to mask it.
+- M1d's chapter job/Library wiring and M1e's reading-aware Auto remain unstarted. Stop for approval of the reported M1c scope and its limits.

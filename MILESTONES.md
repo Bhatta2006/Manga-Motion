@@ -61,25 +61,27 @@ M0b revised technical scope completed on 2026-10-01; evidence and limits in `rep
 
 ### M1b — Panels, reading order, and OCR (≤2 days)
 
-**Status:** implemented and tested on 2026-10-01; measured quality thresholds met on provisional engineer labels only. Awaiting D26 confidence-exception approval and milestone approval before M1c. Evidence and limitations: `reports/M1b.md`.
+**Status:** implemented and tested on 2026-10-01; measured quality thresholds met on provisional engineer labels only. User's subsequent “continue” approves D26's explicit-unavailable exception and authorizes M1c. Numerical calibration remains deferred. Evidence and limitations: `reports/M1b.md`.
 
 - **Goal:** turn pages into ordered, confidence-scored panels and text without manual happy-path work.
 - **Deliverables:** Magi adapter output normalization, reading-order logic, bubble-only OCR crop adapter, fallback only for demonstrated failures, per-stage intermediate JSON and confidence flags.
 - **Files/modules:** `pipeline/analyze_chapter.py`, `pipeline/adapters/ocr.py`, `pipeline/vision/{panels.py,order.py,crops.py,text.py,evaluate.py}`, `pipeline/cache.py`, `pipeline/runtime/scheduler.py`, `tests/{test_vision.py,verify_m1b_golden.py}`, `library/<series>/<chapter>/{analysis.json,cache}`, `reports/M1b.md`. No separate fallback detector was justified by measured failures; missing panels receive flagged geometry fallback.
 - **Tests:** golden panel boxes/order/transcripts; RTL and LTR cases if supplied; ≥70% panel coverage flag; irregular/splash page cases; cache and single-model residency test.
-- **Acceptance checklist:** [x] all supplied pages have an explicit order or review flag; [x] detected panels and dialogue OCR are scored against labels; [x] panel precision/recall ≥95%, fully correct page order ≥97%, dialogue WER ≤3% on the applicable **provisional** subset (25/25 panels, 5/5 order, 0/195 word edits); [x] OCR reads crops only (53 crops / 55 segments, zero full-page calls); [x] no OOM (2,145 MiB peak); [ ] calibrated numeric confidence or approved D26 exception. Reference bias and lack of independent validation remain explicit.
+- **Acceptance checklist:** [x] all supplied pages have an explicit order or review flag; [x] detected panels and dialogue OCR are scored against labels; [x] panel precision/recall ≥95%, fully correct page order ≥97%, dialogue WER ≤3% on the applicable **provisional** subset (25/25 panels, 5/5 order, 0/195 word edits); [x] OCR reads crops only (53 crops / 55 segments, zero full-page calls); [x] no OOM (2,145 MiB peak); [x] approved D26 confidence exception. Reference bias and lack of independent validation remain explicit.
 - **Measurements:** precision/recall, order accuracy, CER/WER, flagged count, stage seconds/page, VRAM/RAM peak, cache hits.
 - **Known risks:** five pages and non-blind panel annotations cannot establish general accuracy; stylized fonts, borderless/splash panels and real LTR remain unevaluated. Models omit calibrated confidence. Cold heavy inference is 6.53868 s/page versus the ≤3 s target; the slowdown's cause is unisolated. Final warm replay is 0.2891 s with 20/20 hits. See D26/D27 and the report.
 
 ### M1c — MotionScript v1 and constrained camera solver (≤2 days)
 
+**Status:** implemented; camera geometry/comfort, contract, cache and browser verification recorded in `reports/M1c.md`. Real phone glyph readability remains unverified, with explicit proxy warnings. Stop for milestone approval before M1d.
+
 - **Goal:** produce a valid end-to-end data contract and comfortable rule-based motion without a VLM.
 - **Deliverables:** schema/types, serialized intermediate-to-MotionScript transform, fit/clamp/visibility solver, basic transitions and audio-clock pacing.
-- **Files/modules:** `schema/motionscript-v1.schema.json`, `schema/examples/basic.json`, `pipeline/motion/{solver.py,rules.py,timing.py,serialize.py}`, `reader/src/types.ts`, `reports/M1c.md`.
+- **Files/modules:** unchanged `schema/motionscript-v1.schema.json`, `schema/examples/basic.json`, `pipeline/build_motion.py`, `pipeline/motion/{compiler.py,solver.py,rules.py,timing.py,serialize.py}`, `reader/src/{types.ts,contract.js,main.ts}`, `reader/tools/validate-contract.mjs`, focused Python/Node/browser tests, `reports/M1c.md`.
 - **Tests:** schema conformance in Python and TypeScript; camera property tests for panel bounds, active bubble visibility, max scale/pan, central focus; deterministic output by identical input hash.
-- **Acceptance checklist:** [ ] reader accepts every generated file with `version: 1`; [ ] all tested camera paths satisfy §5.6 comfort/bubble constraints; [ ] no VLM needed; [ ] identical inputs reproduce identical keyframes; [ ] no unapproved contract change.
+- **Acceptance checklist:** [x] reader accepts every generated file with `version: 1`; [x] tested within-panel paths preserve panel/text and satisfy numeric scale/speed/central-target limits (25 panels, 2,525 samples plus analytic proof); [x] fast transition glides become cuts and Reduce motion holds; [ ] actual minimum readable glyph size on phone (nine small-box proxy flags, glyph size unmeasured); [x] no VLM needed; [x] identical inputs reproduce identical keyframes and script hash; [x] no contract field/version change. Full perceived comfort/direction remains later user evaluation.
 - **Measurements:** solver seconds/page, constraint violation count, timeline duration versus audio duration, output bytes/page, GPU VRAM (expected zero).
-- **Known risks:** PRD sample leaves some fields underspecified; clarify validation without altering the v1 shape or seek a version bump approval.
+- **Known risks:** PRD minimum text size is unspecified and text boxes do not establish font size; actual-phone readability is pending. AJV validation from Python requires existing Node/reader dependencies. Two-second provisional camera extent is not reading-aware Auto (M1e). Rule recipes do not establish scene semantics or subjective comfort. See D28.
 
 ### M1d — Chapter job and tap-paced Library/Reader (≤2 days)
 
