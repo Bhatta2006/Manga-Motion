@@ -86,5 +86,8 @@ node reader\tests\review-smoke.mjs
 
 The browser smoke expects the measured `golden-m1d/chapter` and `preview/m0b`
 chapters. It uses installed Edge and writes its profile/artifacts only on D.
+Run these integration scripts sequentially: they temporarily exercise imports
+and corrections before restoring the golden chapter, so concurrent fixture
+reads are not independent.
 Reports distinguish desktop emulation from actual-phone evidence and clock
 sampling from externally measured A/V synchronization.

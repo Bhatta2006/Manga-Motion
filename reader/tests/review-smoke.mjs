@@ -21,6 +21,9 @@ try{
   assert.equal(saved.metrics.stage.cache_hits,4);assert.equal(saved.metrics.sfx_stage.cache_hits,4);assert.equal(saved.metrics.music_stage.cache_hits,4);
   result.before=original.unresolved;result.after=saved.unresolved;assert.ok(saved.unresolved<original.unresolved);
   await page.reload();await page.locator('#fix-text').waitFor();assert.equal(await page.locator('#fix-text').inputValue(),replacement);
+  const revertResponse=page.waitForResponse(r=>r.url()===base+url&&r.request().method()==='POST');await page.locator('#fix-revert').click();const reverted=await revertResponse;assert.equal(reverted.status(),200);
+  const revertedData=await reverted.json();assert.equal(revertedData.corrections.pages[original.pages[0].page_sha256],undefined);
+  await page.waitForFunction(text=>document.getElementById('fix-text').value===text,original.pages[0].texts[0].text);result.revert='Original text restored; empty geometry bindings pruned';
   await page.locator('#review-order').click();await page.getByRole('button',{name:'Move panel_000 later',exact:true}).click();const orderResponse=page.waitForResponse(r=>r.url()===base+url&&r.request().method()==='POST');await page.locator('#fix-save').click();assert.equal((await orderResponse).status(),200);await page.locator('#fix-order li span').first().getByText('panel_001',{exact:true}).waitFor();
   assert.ok(await page.evaluate(()=>document.body.scrollWidth)<=390);result.mobile='390 px: text confirmation, order buttons and no overflow';
   await page.screenshot({path:path.join(project,'reports/M4a-review-private.png'),fullPage:true});
