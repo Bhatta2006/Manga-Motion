@@ -1,0 +1,243 @@
+{
+  "version": 2,
+  "chapter": "example/ch01",
+  "direction": "rtl",
+  "characters": {
+    "c1": {
+      "name": "Example character",
+      "voice": "unassigned"
+    }
+  },
+  "pages": [
+    {
+      "id": "p001",
+      "image": "pages/001.png",
+      "size": [
+        1000,
+        1400
+      ],
+      "panels": [
+        {
+          "id": "p001_01",
+          "bbox": [
+            100,
+            100,
+            900,
+            700
+          ],
+          "director": {
+            "beat": "quiet",
+            "shot": "wide",
+            "energy": 0.1,
+            "mood": [],
+            "time_skip": false,
+            "focus": [
+              {
+                "kind": "region",
+                "ref": "camera-target",
+                "bbox": [
+                  100,
+                  100,
+                  900,
+                  700
+                ]
+              },
+              {
+                "kind": "bubble",
+                "ref": "b001",
+                "bbox": [
+                  650,
+                  130,
+                  870,
+                  290
+                ]
+              }
+            ]
+          },
+          "timeline": [
+            {
+              "t": 0,
+              "type": "camera",
+              "move": "push_in",
+              "from": [
+                68,
+                76,
+                932,
+                724
+              ],
+              "to": [
+                100,
+                100,
+                900,
+                700
+              ],
+              "dur": 2,
+              "ease": "inOutSine"
+            }
+          ],
+          "transition_out": {
+            "type": "glide",
+            "dur": 0.32
+          },
+          "confidence": {
+            "panel": null,
+            "ocr": null,
+            "speaker": null
+          },
+          "scene": "calm_1",
+          "layers": [
+            {
+              "id": "c1_foreground",
+              "kind": "character",
+              "source_page": "p001",
+              "source_bbox": [
+                200,
+                200,
+                450,
+                550
+              ],
+              "mask": "layers/c1-example.png",
+              "anchor": [
+                0.5,
+                1
+              ],
+              "depth": 0.7,
+              "poses": [
+                {
+                  "u": 0,
+                  "scale": 1,
+                  "offset": [
+                    0,
+                    0
+                  ]
+                },
+                {
+                  "u": 1,
+                  "scale": 1.04,
+                  "offset": [
+                    0.008,
+                    -0.004
+                  ]
+                }
+              ],
+              "safety": {
+                "method": "conservative-mask-envelope-v1",
+                "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+                "mask_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+                "transform_sha256": "95dbcf83580f334ea27a053b0d13c4ae9842d3fd19ebc5177f17262589638261",
+                "max_uncovered_pixels": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "p001_02",
+          "bbox": [
+            100,
+            100,
+            900,
+            700
+          ],
+          "director": {
+            "beat": "quiet",
+            "shot": "wide",
+            "energy": 0.1,
+            "mood": [],
+            "time_skip": false,
+            "focus": [
+              {
+                "kind": "region",
+                "ref": "camera-target",
+                "bbox": [
+                  100,
+                  100,
+                  900,
+                  700
+                ]
+              },
+              {
+                "kind": "bubble",
+                "ref": "b001",
+                "bbox": [
+                  650,
+                  130,
+                  870,
+                  290
+                ]
+              }
+            ]
+          },
+          "timeline": [
+            {
+              "t": 0,
+              "type": "camera",
+              "move": "push_in",
+              "from": [
+                68,
+                76,
+                932,
+                724
+              ],
+              "to": [
+                100,
+                100,
+                900,
+                700
+              ],
+              "dur": 2,
+              "ease": "outExpo"
+            }
+          ],
+          "transition_out": {
+            "type": "glide",
+            "dur": 0.32
+          },
+          "confidence": {
+            "panel": null,
+            "ocr": null,
+            "speaker": null
+          },
+          "scene": "calm_1",
+          "layers": []
+        }
+      ]
+    }
+  ],
+  "scenes": {
+    "calm_1": {
+      "mood": [
+        "calm"
+      ],
+      "beds": [
+        {
+          "id": "calm_music",
+          "bus": "music",
+          "file": "music/calm-example.wav",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "duration": 12,
+          "loop": [
+            0,
+            12
+          ],
+          "gain_db": -24,
+          "fade_seconds": 0.6,
+          "duck_db": -8
+        },
+        {
+          "id": "wind_bed",
+          "bus": "ambience",
+          "file": "ambience/wind-example.wav",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "duration": 8,
+          "loop": [
+            0,
+            8
+          ],
+          "gain_db": -30,
+          "fade_seconds": 0.8,
+          "duck_db": -6
+        }
+      ]
+    }
+  }
+}

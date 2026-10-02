@@ -1,0 +1,663 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mangamotion.local/schema/proposals/motionscript-v2.schema.json",
+  "title": "PROPOSED MotionScript v2 — not approved for production",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "chapter",
+    "direction",
+    "characters",
+    "pages",
+    "scenes"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "chapter": {
+      "type": "string",
+      "minLength": 1
+    },
+    "direction": {
+      "enum": [
+        "rtl",
+        "ltr"
+      ]
+    },
+    "characters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "voice"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "voice": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/page"
+      }
+    },
+    "scenes": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/scene"
+      }
+    }
+  },
+  "definitions": {
+    "rect": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(pages|audio|sfx)/[A-Za-z0-9_.-]+$"
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "image",
+        "size",
+        "panels"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^pages/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "size": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "panels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/panel"
+          }
+        }
+      }
+    },
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "bbox",
+        "director",
+        "timeline",
+        "transition_out",
+        "confidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "bbox": {
+          "$ref": "#/definitions/rect"
+        },
+        "director": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "beat",
+            "shot",
+            "energy",
+            "mood",
+            "time_skip",
+            "focus"
+          ],
+          "properties": {
+            "beat": {
+              "enum": [
+                "establish",
+                "dialogue",
+                "reaction",
+                "reveal",
+                "impact",
+                "chase",
+                "comedy",
+                "flashback",
+                "quiet",
+                "transition"
+              ]
+            },
+            "shot": {
+              "enum": [
+                "wide",
+                "medium",
+                "closeup",
+                "extreme_closeup",
+                "splash",
+                "insert"
+              ]
+            },
+            "energy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mood": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "time_skip": {
+              "type": "boolean"
+            },
+            "focus": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "bbox"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "face",
+                      "object",
+                      "bubble",
+                      "region"
+                    ]
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "char": {
+                    "type": "string"
+                  },
+                  "bbox": {
+                    "$ref": "#/definitions/rect"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "timeline": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/definitions/camera"
+              },
+              {
+                "$ref": "#/definitions/line"
+              },
+              {
+                "$ref": "#/definitions/sfx"
+              }
+            ]
+          }
+        },
+        "transition_out": {
+          "type": "object",
+          "required": [
+            "type",
+            "dur"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "glide",
+                "cut",
+                "fade",
+                "whip",
+                "dissolve",
+                "dip"
+              ]
+            },
+            "dur": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.6
+            }
+          }
+        },
+        "confidence": {
+          "type": "object",
+          "required": [
+            "panel",
+            "ocr",
+            "speaker"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "panel": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "ocr": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "speaker": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "scene": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+        },
+        "layers": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/characterLayer"
+          }
+        }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "type",
+        "move",
+        "from",
+        "to",
+        "dur",
+        "ease"
+      ],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "const": "camera"
+        },
+        "move": {
+          "enum": [
+            "push_in",
+            "pull_out",
+            "pan",
+            "hold"
+          ]
+        },
+        "from": {
+          "$ref": "#/definitions/rect"
+        },
+        "to": {
+          "$ref": "#/definitions/rect"
+        },
+        "dur": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ease": {
+          "enum": [
+            "linear",
+            "outQuad",
+            "inOutSine",
+            "outExpo",
+            "outBack"
+          ]
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "type",
+        "bubble",
+        "speaker",
+        "text",
+        "audio",
+        "dur",
+        "emotion",
+        "highlight"
+      ],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "const": "line"
+        },
+        "bubble": {
+          "type": "string"
+        },
+        "speaker": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "audio": {
+          "type": "string",
+          "pattern": "^audio/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "dur": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "emotion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "delivery",
+            "intensity"
+          ],
+          "properties": {
+            "delivery": {
+              "enum": [
+                "speak",
+                "shout",
+                "whisper",
+                "think",
+                "narrate",
+                "cry",
+                "laugh"
+              ]
+            },
+            "intensity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "highlight": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sfx": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "type",
+        "file",
+        "gain_db"
+      ],
+      "properties": {
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "type": {
+          "const": "sfx"
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^sfx/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "gain_db": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": 0
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mood",
+        "beds"
+      ],
+      "properties": {
+        "mood": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "beds": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/definitions/bed"
+          }
+        }
+      }
+    },
+    "bed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "bus",
+        "file",
+        "sha256",
+        "duration",
+        "loop",
+        "gain_db",
+        "fade_seconds",
+        "duck_db"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+        },
+        "bus": {
+          "enum": [
+            "music",
+            "ambience"
+          ]
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^(music|ambience)/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "loop": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "gain_db": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": -6
+        },
+        "fade_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3
+        },
+        "duck_db": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 0
+        }
+      }
+    },
+    "layerPose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "u",
+        "scale",
+        "offset"
+      ],
+      "properties": {
+        "u": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1.06
+        },
+        "offset": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": -0.02,
+            "maximum": 0.02
+          }
+        }
+      }
+    },
+    "layerSafety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "source_sha256",
+        "mask_sha256",
+        "transform_sha256",
+        "max_uncovered_pixels"
+      ],
+      "properties": {
+        "method": {
+          "const": "conservative-mask-envelope-v1"
+        },
+        "source_sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "mask_sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "transform_sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "max_uncovered_pixels": {
+          "const": 0
+        }
+      }
+    },
+    "characterLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "source_page",
+        "source_bbox",
+        "mask",
+        "anchor",
+        "depth",
+        "poses",
+        "safety"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+        },
+        "kind": {
+          "const": "character"
+        },
+        "source_page": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_bbox": {
+          "$ref": "#/definitions/rect"
+        },
+        "mask": {
+          "type": "string",
+          "pattern": "^layers/[A-Za-z0-9][A-Za-z0-9_.-]*\\.png$"
+        },
+        "anchor": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1
+        },
+        "poses": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/definitions/layerPose"
+          }
+        },
+        "safety": {
+          "$ref": "#/definitions/layerSafety"
+        }
+      }
+    }
+  }
+}

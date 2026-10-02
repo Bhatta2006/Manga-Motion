@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "chapter": "example/ch01",
+  "direction": "rtl",
+  "characters": {},
+  "pages": [
+    {
+      "id": "p001",
+      "image": "pages/001.png",
+      "size": [
+        1000,
+        1400
+      ],
+      "panels": [
+        {
+          "id": "p001_01",
+          "bbox": [
+            100,
+            100,
+            900,
+            700
+          ],
+          "director": {
+            "beat": "quiet",
+            "shot": "wide",
+            "energy": 0.1,
+            "mood": [],
+            "time_skip": false,
+            "focus": [
+              {
+                "kind": "region",
+                "ref": "camera-target",
+                "bbox": [
+                  100,
+                  100,
+                  900,
+                  700
+                ]
+              },
+              {
+                "kind": "bubble",
+                "ref": "b001",
+                "bbox": [
+                  650,
+                  130,
+                  870,
+                  290
+                ]
+              }
+            ]
+          },
+          "timeline": [
+            {
+              "t": 0,
+              "type": "camera",
+              "move": "push_in",
+              "from": [
+                68,
+                76,
+                932,
+                724
+              ],
+              "to": [
+                100,
+                100,
+                900,
+                700
+              ],
+              "dur": 2,
+              "ease": "outBack"
+            }
+          ],
+          "transition_out": {
+            "type": "glide",
+            "dur": 0.32
+          },
+          "confidence": {
+            "panel": null,
+            "ocr": null,
+            "speaker": null
+          }
+        }
+      ]
+    }
+  ],
+  "scenes": {}
+}

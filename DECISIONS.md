@@ -170,3 +170,9 @@ Existing v1 enum limits require outQuad shock and piecewise comedy approximation
 Use tiny deterministic CPU procedural assets behind a provider instead of adding an audio model. Record exact provenance/hashes and repair assets independently of cached page records. Suppress cues that conflict with human/final text kinds; inferred scene accents remain reviewable, limited to one repeated stylistic category/page and at most three cues/page. No page-turn default. This realizes zero-cost local routing while actual sound appropriateness remains a listening gate; see reports/M3c.md.
 
 Keep user mute separate from a future voice-driven duck envelope. Publish identical SFX in streamed/final v1 snapshots and preserve reading dwell. Prepare anonymous, time/audio-matched static/fixed/directed variants for actual evaluation; never substitute preparation or Web Audio RMS for blind user scores.
+
+## D36 — Proposed v2 beds, source layers and easing (awaiting approval)
+
+Following the requested ECC contract-first workflow, prepare the exact reviewable proposal in `docs/proposals/motionscript-music-depth.md` and `schema/proposals/motionscript-v2.schema.json`. Add scene-spanning local music/ambience, masked original-page character planes with bounded poses/hash-bound conservative safety metadata, and outExpo/outBack easing. Keep bed duration out of panel dwell; preserve v1 through explicit version dispatch and lossless flat promotion only. Old chapters/snapshots remain v1. Unknown fields/versions and unsafe paths fail visibly.
+
+This is **proposed, not approved or implemented in production**. Structural fixtures do not establish real layer coverage or perceived depth; no hidden-background invention is allowed. The user retained contract-change approval, so music/layer feature wiring waits for explicit v2 approval. See `reports/M3d1.md` for fixture/negative-case/version-preservation evidence.

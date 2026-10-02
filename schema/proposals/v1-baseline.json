@@ -1,0 +1,9 @@
+{
+  "normalization": "UTF-8 with LF line endings",
+  "files": {
+    "schema/motionscript-v1.schema.json": "f0baa58aa618c4b9d4baa36943c6f4b989cef80d8cebfe645a80727dd88916b8",
+    "schema/examples/basic.json": "818f4affbffc815a721f5951d901d4bd2748908b1f0fcca35bc933e3b24ae0e0",
+    "reader/src/contract.js": "b79a301b5ce5c9f2e3caecbb286e98d5cdae40ac81e4162ea643efcabd2a0f88",
+    "reader/src/types.ts": "d655e10671e7e1efe434b40201a29546ff80941f65520b95be4b36570b6a7962"
+  }
+}

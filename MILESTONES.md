@@ -213,11 +213,13 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M3d1 — Music/depth contract proposal (≤1 day; approval gate)
 
+**Status:** concrete ECC contract-first proposal/schema/examples and verification prepared in `reports/M3d1.md`; explicit user version-bump approval remains pending. No production v2 feature is implemented.
+
 - **Goal:** make necessary scene-spanning audio/layer metadata reviewable before changing v1.
 - **Deliverables:** concrete schema/example diff, reader capability/version strategy, migration and v1 replay plan; proposal only, no feature implementation.
 - **Files/modules:** `docs/proposals/motionscript-music-depth.md`, `schema/proposals/`, `DECISIONS.md`, `reports/M3d1.md`.
 - **Tests:** validate proposed fixtures; show music cannot become panel reading duration; retain existing v1 fixtures and migration round trips.
-- **Acceptance checklist:** [ ] exact proposed fields/events/version documented; [ ] old chapter behavior preserved; [ ] user explicitly approves any version bump before implementation.
+- **Acceptance checklist:** [x] exact proposed fields/events/version documented; [x] old chapter behavior preserved by flat promotion and unchanged production v1; [ ] user explicitly approves any version bump before implementation.
 - **Measurements:** proposed artifact size and migration scope; GPU VRAM zero.
 - **Known risks:** current v1 lacks explicit persistent music/layer semantics; product-scope approval is not unseen-schema approval.
 
