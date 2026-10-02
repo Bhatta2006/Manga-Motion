@@ -11,9 +11,17 @@ import type { MotionScript, Rect, Page } from './script-types';
 import {canonicalSceneOffset,incomingTransition} from './music';
 import { setPacing, playback } from './api';
 import { FlowController } from './flow';
+import {ReaderGestures} from './gestures';
+import {BubbleOverlay} from './bubble-overlay';
+import {PageOverview} from './overview';
+import {FixSheet} from './fix-sheet';
+import {activeBubble,hitText,tapDirection} from './bubble-state.js';
+import {reviewUrl} from './review-data';
+import type {Review} from './review-data';
+import {request} from './api';
 import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
 import './motion.css';
-export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean}
+export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean;startPanel?:string}
 export async function startReader(options:ReaderOptions) {
 const ajv=new Ajv({allErrors:true}),validators={1:ajv.compile(schema),2:ajv.compile(schemaV2)};
 
@@ -43,6 +51,7 @@ const world=new Container();
 const previousWorld=new Container(),previousMask=new Graphics().rect(0,0,1,1).fill(0xffffff),effectsOverlay=new Graphics();
 const frameMask=new Graphics().rect(0,0,1,1).fill(0xffffff);
 const plane=new SourcePlane();
+const bubble=new BubbleOverlay(),overview=new PageOverview();
 const audio=new AudioTimeline(options.assetBase);
 const textures=new Map<string,Texture>();
 let script:MotionScript,index=0,ready=false,loading=false,classic=false,auto=false,reduce=false,depth=true;
@@ -56,6 +65,9 @@ let flow:FlowController|null=null;
 const pageBases=new Map<string,string>();
 let polling=false,pollTimer=0,closed=false,processingError='';
 let sfxLevel=1;
+let gestures:ReaderGestures|null=null,glowingBubble:string|null=null,reviewData:Review|null=null;
+let heldAt=0,lastHoldMs=0;
+const fixSheet=options.series&&options.chapter&&!options.comparison?new FixSheet(options.series,options.chapter):null;
 window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);audio.pause();audio.music.cancel();void audio.context.close();},{once:true});
 
 function current() {const e=entries[index],page=script.pages[e.page] as Page;return {page,panel:page.panels[e.panel]};}
@@ -79,11 +91,12 @@ function updateHud() {
   document.querySelector('.study')!.textContent=options.partial?`${script.pages.length}/${options.totalPages} pages ready`:`${script.pages.length} pages · original art`;
   const mode=($('mode') as HTMLSelectElement).value;
   stage.setAttribute('aria-label',mode==='tap'?'Advance to next panel':'Pause or resume scene');
-  $('hint').textContent=classic?'Original art · press Motion view to return':index===entries.length-1&&audio.offset>=audio.duration?(options.partial?'Waiting for next page…':'Chapter complete · replay or return to page 1'):mode==='flow'?'Swipe up for next · tap to pause':audio.playing?(auto?'Tap to pause · Auto follows reading time':'Tap the art to advance'):'Play to begin';
+  $('hint').textContent=classic?'Original art · current panel outlined · tap to return':index===entries.length-1&&audio.offset>=audio.duration?(options.partial?'Waiting for next page…':'Chapter complete · replay or return to page 1'):mode==='flow'?'Swipe up for next · hold for fixes / page':audio.playing?(auto?'Tap to pause · Auto follows reading time':'Tap center to finish · sides to navigate'):'Play · hold for fixes / page · two-finger tap to replay';
   $('hint').style.opacity=audio.playing?'0':'1';
 }
 async function show(next:number,play=false,replay=false) {
   if(next<0||next>=entries.length) return;
+  gestures?.cancel();
   const token=++navigation;
   const old=index;
   const oldRect=ready&&!classic?rectNow():null;
@@ -106,6 +119,7 @@ async function show(next:number,play=false,replay=false) {
     previousWorld.removeChildren().forEach(child=>child.destroy({texture:false,textureSource:false}));
     active=new Sprite(texture);world.addChild(active);
     plane.prepare(texture,panel);if(plane.sprite)world.addChild(plane.sprite);
+    world.addChild(bubble.graphic,overview.graphic);
     // ±1 page cache; release old TextureSources explicitly. No models in reader.
     for(const [key,value] of textures) {
       const pageIndex=script.pages.findIndex(p=>(pageBases.get(p.id)??options.assetBase)+p.image===key);
@@ -132,21 +146,30 @@ async function show(next:number,play=false,replay=false) {
 async function togglePlay() {
   if(loading)return;
   if(!ready) {await show(index,true,true);return;}
-  if(classic){classic=false;$('classic').textContent='Original page';}
+  if(classic)setOverview(false);
   if(audio.playing)audio.pause();
   else if(audio.offset>=audio.duration+transition)await show(index,true,true);
   else await audio.play(current().panel,transition);
   updateHud();
 }
-function advance(delta:number) {if(classic){classic=false;$('classic').textContent='Original page';}void show(index+delta,true);}
+function advance(delta:number) {if(classic)setOverview(false);void show(index+delta,true);}
+function setOverview(value:boolean){if(!ready)return;audio.pause();classic=value;$('classic').textContent=classic?'Motion view':'Original page';flow?.cancelInteraction();flow?.setEnabled(!classic&&(($('mode') as HTMLSelectElement).value==='flow'||(auto&&matchMedia('(max-width:650px)').matches)));updateHud();}
+function tap(x?:number){
+  if(classic){setOverview(false);return;}
+  if(auto){void togglePlay();return;}
+  const bounds=stage.getBoundingClientRect(),direction=x===undefined?0:tapDirection(x-bounds.left,bounds.width,script.direction);
+  if(direction){advance(direction);return;}
+  if(audio.playing){audio.pause();audio.offset=audio.duration+transition;updateHud();}
+  else advance(1);
+}
 async function action(fn:()=>void|Promise<void>) {try{await audio.unlock();await fn();}catch(e){error.textContent=String(e);metrics.errors.push(String(e));}}
 
 $('play').onclick=()=>void action(togglePlay);
 $('next').onclick=()=>void action(()=>advance(1));
 $('prev').onclick=()=>void action(()=>advance(-1));
 $('replay').onclick=()=>void action(()=>show(index,true,true));
-stage.onclick=()=>void action(()=>auto?togglePlay():advance(1));
-stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>auto?togglePlay():advance(1));}};
+stage.onclick=e=>void action(()=>tap(e.clientX));
+stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>tap());}};
 $('mode').onchange=()=>{const mode=($('mode') as HTMLSelectElement).value;auto=mode==='auto'||mode==='silent';applyAudioLevels();flow?.setEnabled(mode==='flow'||(auto&&matchMedia('(max-width:650px)').matches));if(auto&&!audio.playing)void action(togglePlay);updateHud();};
 $('speed').onchange=()=>void action(async()=>{
   if(!options.series||!options.chapter)return;
@@ -170,11 +193,13 @@ for(const id of ['music-enable','ambience-enable','voice-enable','music-level','
 $('reduce').onchange=()=>{reduce=($('reduce') as HTMLInputElement).checked;updateHud();};
 motionSelect.onchange=()=>{motionPreset=motionSelect.value;};
 $('depth').onchange=()=>{depth=($('depth') as HTMLInputElement).checked;};
-$('classic').onclick=()=>{if(!ready)return;audio.pause();classic=!classic;$('classic').textContent=classic?'Motion view':'Original page';flow?.setEnabled(!classic&&(($('mode') as HTMLSelectElement).value==='flow'||(auto&&matchMedia('(max-width:650px)').matches)));updateHud();};
+$('classic').onclick=()=>setOverview(!classic);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&ready){audio.pause();updateHud();}});
 document.addEventListener('keydown',e=>{
   if(!script||!ready)return;
   if((e.target as HTMLElement).matches('input,select,button,#stage,.flow-rail'))return;
+  if(fixSheet?.dialog.open)return;
+  if(e.key==='Escape'&&classic){setOverview(false);return;}
   if(e.key===' '){e.preventDefault();void action(togglePlay);}
   if(e.key==='ArrowLeft')void action(()=>advance(script.direction==='rtl'?1:-1));
   if(e.key==='ArrowRight')void action(()=>advance(script.direction==='rtl'?-1:1));
@@ -208,6 +233,18 @@ async function init() {
     next=>{if(!loading&&next!==index)void action(()=>show(next,true));else flow?.sync(index);},
     ()=>{if(loading)return;audio.pause();auto=false;($('mode') as HTMLSelectElement).value='flow';applyAudioLevels();void action(()=>{});updateHud();},
     wasPlaying=>{if(wasPlaying)updateHud();else void action(togglePlay);},()=>audio.playing);
+  gestures=new ReaderGestures(stage.parentElement!, (x,y)=>{
+    if(!ready||loading)return;audio.pause();flow?.cancelInteraction();
+    const bounds=app.canvas.getBoundingClientRect(),sx=(x-bounds.left)*app.screen.width/bounds.width,sy=(y-bounds.top)*app.screen.height/bounds.height;
+    const px=(sx-world.position.x)/world.scale.x,py=(sy-world.position.y)/world.scale.y;
+    const page=reviewData?.pages.find(p=>p.id===current().page.id);
+    const text=page?hitText(page.texts.filter(t=>classic||t.panel_id===current().panel.id.replace(current().page.id+'_','')),px,py):null;
+    if(page&&text&&fixSheet)fixSheet.open(reviewData!,page,text,current().panel.id);
+    else setOverview(true);
+    lastHoldMs=performance.now()-heldAt;updateHud();
+  },()=>void action(()=>{setOverview(false);return show(index,true,true);}),()=>flow?.cancelInteraction());
+  stage.parentElement!.addEventListener('pointerdown',()=>{heldAt=performance.now();},{capture:true});
+  if(options.series&&options.chapter&&!options.comparison)void request<Review>(reviewUrl(options.series,options.chapter)).then(data=>{reviewData=data;}).catch(()=>{ /* Overview remains available when review is unavailable. */ });
   if(matchMedia('(max-width:650px)').matches){($('mode') as HTMLSelectElement).value='flow';flow.setEnabled(true);}
   reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;($('reduce') as HTMLInputElement).checked=reduce;
   app.ticker.add(()=>{
@@ -233,14 +270,19 @@ async function init() {
     const nextFxKey=[app.screen.width,app.screen.height,fx.flash,fx.vignette].join(',');
     if(nextFxKey!==fxKey){fxKey=nextFxKey;effectsOverlay.clear();if(fx.flash)effectsOverlay.rect(0,0,app.screen.width,app.screen.height).fill({color:0xffffff,alpha:fx.flash});vignette.style.opacity=String(fx.vignette*4);}
     plane.update(clamp((time-transition)/audio.duration),depth&&!reduce&&!classic);
+    overview.update(panel.bbox,world.scale.x,classic);
+    const activeBubbleState=activeBubble(panel,time-transition,audio.clips);
+    glowingBubble=!classic&&activeBubbleState.bbox?activeBubbleState.line!.bubble:null;
+    bubble.update(classic?null:activeBubbleState.bbox as Rect|null,time-transition,world.scale.x,reduce);
     $('progress').style.width=((index+clamp(time/(audio.duration+transition)))/entries.length*100)+'%';
-    const activeLine=panel.timeline.find(e=>e.type==='line'&&time-transition>=e.t&&time-transition<e.t+e.dur);
+    const activeLine=activeBubbleState.line;
     // Future dialogue events already play through the voice bus and share the clock.
     if(activeLine?.type==='line')$('caption').textContent=activeLine.text;
     if(audio.playing){clockErrors.push(Math.abs(audio.time()-time)*1000);if(clockErrors.length>3600)clockErrors.shift();}
     if(audio.playing&&time>=audio.duration+transition-.001){audio.finish();if(auto&&index<entries.length-1)void show(index+1,true);else{audio.music.pause();updateHud();}}
   });
-  await show(0);
+  const initial=options.startPanel?entries.findIndex(e=>script.pages[e.page].panels[e.panel].id===options.startPanel):-1;
+  await show(initial>=0?initial:0);
   async function refreshPages(){
     if(closed||polling||!options.partial||!options.series||!options.chapter)return;
     polling=true;
@@ -269,7 +311,7 @@ async function init() {
   }
   if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],worldTransform:[world.position.x,world.position.y,world.scale.x],glowingBubble,glowAlpha:bubble.graphic.alpha,reviewReady:!!reviewData,lastHoldMs,loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }

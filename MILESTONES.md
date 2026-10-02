@@ -267,7 +267,7 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 - **Deliverables:** active-bubble glow overlay, long-press fix sheet, full-page context/overview gestures, accessible visual states.
 - **Files/modules:** `reader/src/{bubble-overlay.ts,gestures.ts,overview.ts,fix-sheet.ts}`, `reports/M4b.md`.
 - **Tests:** overlay does not modify page bitmap; line/glow timing; gesture interaction and RTL/LTR behavior; reduce-motion accessibility smoke test.
-- **Acceptance checklist:** [ ] glow follows the active line; [ ] original page is always one gesture away; [ ] fix sheet targets the intended bubble; [ ] no art pixels change; [ ] touch input remains responsive.
+- **Acceptance checklist:** [x] glow follows the active line in a decoded-audio fixture (real voices pending); [x] original page is one hold away; [x] fix sheet targets the intended real text crop; [x] source art files unchanged; [x] CDP touch/Flow interaction passes (actual phone pending).
 - **Measurements:** gesture latency, A/V/glow offset, FPS, memory use, correction time, pixel integrity.
 - **Known risks:** text boxes may overlap; touch behavior on the target device needs direct validation.
 
@@ -344,3 +344,5 @@ After M3d3 technical delivery, **12 implementation slices remain**: four M4 slic
 Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; the exact M3d1 v2 proposal is explicitly approved.
 
 After M4a technical delivery, **11 implementation slices remain**: M4b/c1/c2 (3), M5a–d (4), M2a–d (4). M4a user timing/re-voice and earlier quality/device gates remain acceptance work.
+
+After M4b technical delivery, **10 implementation slices remain**: M4c1/c2 (2), M5a–d (4), M2a–d (4). Real voice guidance, actual-device trials and earlier quality gates remain acceptance work. See `reports/M4b.md`.

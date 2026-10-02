@@ -29,7 +29,7 @@ try{
   await page.locator('#classic').click();assert.equal((await diag()).classic,false);
   const visited=[0];
   for(let i=1;i<25;i++){
-    await page.locator('#stage').click();await ready();assert.equal((await diag()).index,i);visited.push(i);
+    await page.locator('#stage').click({position:{x:15,y:40}});await ready();assert.equal((await diag()).index,i);visited.push(i);
   }
   results.tapVisited=visited;
   assert.ok((await diag()).loadedTextures<=3);results.textureCount=(await diag()).loadedTextures;

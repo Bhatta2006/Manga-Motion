@@ -82,6 +82,7 @@ With the API running and the private five-page fixtures present:
 node reader\tests\library-smoke.mjs
 node reader\tests\music-smoke.mjs
 node reader\tests\review-smoke.mjs
+node reader\tests\gestures-smoke.mjs
 ```
 
 The browser smoke expects the measured `golden-m1d/chapter` and `preview/m0b`
@@ -91,3 +92,9 @@ and corrections before restoring the golden chapter, so concurrent fixture
 reads are not independent.
 Reports distinguish desktop emulation from actual-phone evidence and clock
 sampling from externally measured A/V synchronization.
+
+In the reader, hold a text crop to fix it or hold elsewhere for the full original
+page with the current panel outlined. Tap the overview to return, or use Original
+page / Escape. Flow swipes select next/previous; two-finger tap replays. In Tap
+paced mode, side taps follow chapter direction; a playing center tap finishes
+the scene before the following tap advances. Voice-related fixes remain pending.

@@ -49,6 +49,7 @@ export class FlowController {
   }
   private resize(){for(const node of Array.from(this.rail.children))(node as HTMLElement).style.height=this.rail.clientHeight+'px';this.sync(this.current);}
   setCount(count:number){this.count=count;this.rebuild();}
+  cancelInteraction(){this.dragging=false;this.start=null;this.manual=false;clearTimeout(this.timer);this.sync(this.current);}
   setEnabled(value:boolean){this.enabled=value;this.rail.hidden=!value;this.manual=false;clearTimeout(this.timer);if(value)this.resize();}
   sync(index:number){this.current=index;this.manual=false;clearTimeout(this.timer);this.rail.scrollTo({top:index*this.rail.clientHeight,behavior:'instant'});}
   destroy(){clearTimeout(this.timer);this.observer.disconnect();this.rail.remove();}

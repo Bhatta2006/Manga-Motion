@@ -14,7 +14,7 @@ async function boot(){
       info.script_url=base+'/motionscript.json';info.asset_base=base+'/assets/';info.partial=false;
     }
     const {startReader}=await import('./reader');
-    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:params.has('comparison')?'Comparison sample':`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages,comparison:params.has('comparison')});return;
+    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:params.has('comparison')?'Comparison sample':`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages,comparison:params.has('comparison'),startPanel:params.get('at')??undefined});return;
   }
   const health=await fetch('/api/health');
   if(health.status===404){

@@ -1,12 +1,9 @@
 import {request} from './api';
-import type {CorrectionsV1,VCorrectionsText,VCorrectionsPanel} from './generated/motionscript';
+import type {CorrectionsV1} from './generated/motionscript';
 import correctionSchema from '../../schema/corrections-v1.schema.json';
-type Rect=[number,number,number,number];
-interface Text {id:string;text:string;kind:NonNullable<VCorrectionsText['kind']>;panel_id:string|null;bbox:Rect;speaker:string|null}
-interface Scene {beat:NonNullable<VCorrectionsPanel['beat']>;mood:string[];energy:number;time_skip:boolean}
-interface Page {id:string;page_sha256:string;geometry_sha256:string;size:[number,number];order:string[];texts:Text[];panels:{id:string;bbox:Rect}[];scenes:Record<string,Scene>}
-interface Issue {id:string;page_sha256:string;kind:string;target:string;bbox:Rect;reasons:string[]}
-interface Review {corrections:CorrectionsV1;revision:string;pages:Page[];issues:Issue[];unresolved:number;confidence_note:string;elapsed_seconds?:number}
+import type {Rect} from './script-types';
+import {textFields,pruneCorrections} from './review-data';
+import type {Review,ReviewScene as Scene} from './review-data';
 export async function startReview(series:string,chapter:string){
   const url=`/api/chapters/${encodeURIComponent(series)}/${encodeURIComponent(chapter)}/review`,root=document.querySelector('#app')!;
   root.classList.add('library-app');root.innerHTML='<header><div class="brand">MangaMotion <span>/ Review</span></div><a class="library-link" href="/">Library</a></header><main class="review-main"><div class="review-heading"><h1>Review chapter</h1><a id="review-read" class="read-link">Read chapter</a></div><p id="review-count" role="status"></p><p class="review-note">Confirm uncertain text and scenes, or correct them below. Saved fixes are reused on future processing. Voices are pending; speaker assignments are saved for that stage.</p><div class="review-toolbar"><label>Page <select id="review-page"></select></label><button id="review-reload">Reload saved review</button></div><div class="review-grid"><section><h2>Review notes</h2><div id="review-issues"></div></section><section id="review-editor" aria-label="Correction editor"></section></div><p id="review-message" role="status"></p></main>';
@@ -21,7 +18,7 @@ export async function startReview(series:string,chapter:string){
   }
   function feedback(message:string){$('review-message').textContent=message;}
   async function save(candidate:CorrectionsV1,kind:string,target:string){
-    for(const [digest,p] of Object.entries(candidate.pages))if(!p.order&&!p.order_confirmed&&!Object.keys(p.texts??{}).length&&!Object.keys(p.panels??{}).length)delete candidate.pages[digest];
+    pruneCorrections(candidate);
     if(saving)return;saving=true;const form=$('review-form');form.inert=true;form.setAttribute('aria-busy','true');($('review-page') as HTMLSelectElement).disabled=true;($('review-reload') as HTMLButtonElement).disabled=true;feedback('Saving and updating this chapter…');
     try{data=await request<Review>(url,{expected_revision:data.revision,corrections:candidate});renderList();edit(kind,target);feedback(`Saved. Playback updated in ${data.elapsed_seconds?.toFixed(2)} s. Original art and OCR caches retained.`);}
     catch(e){feedback(String(e)+' Your edits are still shown; reload only if another window changed the saved version.');}
@@ -50,12 +47,7 @@ export async function startReview(series:string,chapter:string){
     const existing=data.corrections.pages[digest]??{geometry_sha256:page().geometry_sha256};
     if(kind==='text'||kind==='speaker'){
       const text=page().texts.find(t=>t.id===target);if(!text){feedback('Text target is unavailable.');return;}form.append(crop(text.bbox));
-      const area=document.createElement('textarea');area.id='fix-text';area.rows=4;area.maxLength=4000;area.value=text.text;label('Text',area);
-      const kind=label('Text kind',select('fix-kind',correctionSchema.definitions.text.properties.kind.enum,text.kind));
-      const panel=label('Belongs to panel',select('fix-panel',['unassigned',...page().order],text.panel_id??'unassigned'));
-      const speaker=label('Speaker ID (optional; voices pending)',input('fix-speaker',text.speaker??''));speaker.maxLength=64;speaker.pattern='[A-Za-z0-9][A-Za-z0-9_-]{0,63}';
-      const confirm=input('fix-confirm','');confirm.type='checkbox';confirm.checked=existing.texts?.[target]?.confirmed??false;label('I checked this text against the original',confirm);
-      apply=fix=>{const patch:VCorrectionsText={text:area.value,kind:kind.value as Text['kind'],panel_id:panel.value==='unassigned'?null:panel.value,speaker:speaker.value||null,confirmed:confirm.checked};const p=fix.pages[digest]??={geometry_sha256:page().geometry_sha256};(p.texts??={})[target]=patch;};
+      apply=textFields(form,text,page(),data.corrections);
       revert=fix=>{delete fix.pages[digest]?.texts?.[target];};
     }else if(kind==='order'){
       form.append(crop([0,0,...page().size]));const order=page().order.slice(),list=document.createElement('ol');list.id='fix-order';form.append(list);
