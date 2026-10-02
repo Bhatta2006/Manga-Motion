@@ -1,6 +1,6 @@
 import { Rectangle, Sprite, Texture } from 'pixi.js';
 import { poseOf } from './core.js';
-import type { Panel, Rect } from './types';
+import type { Panel, Rect } from './script-types';
 
 export class SourcePlane {
   sprite:Sprite|null=null;

@@ -1,18 +1,21 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import Ajv from 'ajv';
 import schema from '../../schema/motionscript-v1.schema.json';
-import { validateMotionScript } from './contract.js';
+import schemaV2 from '../../schema/motionscript-v2.schema.json';
+import { validateSupportedScript } from './contract-v2.js';
 import { clamp, ease, interpolate } from './core.js';
 import { fit } from './camera';
 import { SourcePlane } from './parallax';
 import { AudioTimeline } from './player';
-import type { MotionScript, Rect } from './types';
+import type { MotionScript, Rect, Page } from './script-types';
+import {canonicalSceneOffset,incomingTransition} from './music';
 import { setPacing, playback } from './api';
 import { FlowController } from './flow';
 import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
 import './motion.css';
 export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean}
 export async function startReader(options:ReaderOptions) {
+const ajv=new Ajv({allErrors:true}),validators={1:ajv.compile(schema),2:ajv.compile(schemaV2)};
 
 document.querySelector('#app')!.innerHTML=`
 <header><div class="brand">MangaMotion <span>/ Motion study</span></div><div class="study">5 pages · original art</div></header>
@@ -26,6 +29,10 @@ document.querySelector('.brand span')!.textContent='/ '+options.title;
 if(options.library){const back=document.createElement('a');back.href='/';back.textContent='Library';back.className='library-link';document.querySelector('header')!.append(back);}
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id)! as T;
 const stage=$('stage'),status=$('status'),error=$('error');
+const silentOption=document.createElement('option');silentOption.value='silent';silentOption.textContent='Silent auto';($('mode') as HTMLSelectElement).append(silentOption);
+const sound=document.createElement('details');sound.className='sound-settings';
+sound.innerHTML='<summary>Sound levels</summary><div class="sound-options"><label><input id="music-enable" type="checkbox" checked>Music <input id="music-level" aria-label="Music volume" type="range" min="0" max="100" value="100"></label><label><input id="ambience-enable" type="checkbox" checked>Ambience <input id="ambience-level" aria-label="Ambience volume" type="range" min="0" max="100" value="100"></label><label><input id="voice-enable" type="checkbox" checked>Voices <input id="voice-level" aria-label="Voice volume" type="range" min="0" max="100" value="100"></label><label>SFX <input id="sfx-level" aria-label="Sound effect volume" type="range" min="0" max="100" value="100"></label></div>';
+document.querySelector('footer')!.append(sound);
 if(options.comparison)$('caption').hidden=true;
 const motionSelect=document.createElement('select');motionSelect.id='motion';motionSelect.setAttribute('aria-label','Motion strength');
 motionSelect.innerHTML='<option value="subtle">Subtle motion</option><option value="normal" selected>Normal motion</option><option value="hype">Hype motion</option>';
@@ -48,9 +55,17 @@ const metrics={firstReadyMs:0,errors:[] as string[]};
 let flow:FlowController|null=null;
 const pageBases=new Map<string,string>();
 let polling=false,pollTimer=0,closed=false,processingError='';
-window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);},{once:true});
+let sfxLevel=1;
+window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);audio.pause();audio.music.cancel();void audio.context.close();},{once:true});
 
-function current() {const e=entries[index];return {page:script.pages[e.page],panel:script.pages[e.page].panels[e.panel]};}
+function current() {const e=entries[index],page=script.pages[e.page] as Page;return {page,panel:page.panels[e.panel]};}
+function applyAudioLevels(){
+  const silent=($('mode') as HTMLSelectElement).value==='silent';
+  for(const bus of ['music','ambience'] as const)audio.music.setLevel(bus,silent||!($(`${bus}-enable`) as HTMLInputElement).checked?0:Number(($(`${bus}-level`) as HTMLInputElement).value)/100);
+  const now=audio.context.currentTime;
+  sfxLevel=silent||!($('sfx') as HTMLInputElement).checked?0:Number(($('sfx-level') as HTMLInputElement).value)/100;
+  for(const [param,value] of [[audio.sfxGain.gain,silent||!($('sfx') as HTMLInputElement).checked?0:Number(($('sfx-level') as HTMLInputElement).value)/100],[audio.voiceGain.gain,silent||!($('voice-enable') as HTMLInputElement).checked?0:.6*Number(($('voice-level') as HTMLInputElement).value)/100]] as const){param.cancelAndHoldAtTime(now);param.linearRampToValueAtTime(value,now+.02);}
+}
 function rectNow():Rect {return styledCamera(current().panel,Math.max(0,audio.time()-transition),motionPreset,reduce);}
 function updateHud() {
   const e=entries[index],{page,panel}=current();
@@ -60,7 +75,7 @@ function updateHud() {
   ($('prev') as HTMLButtonElement).disabled=index===0;
   ($('next') as HTMLButtonElement).disabled=index===entries.length-1;
   status.textContent=plane.sprite?'Source-only parallax available · visual preview':'Camera motion · parallax gated: no safe foreground region';
-  error.textContent=[...audio.failures,processingError].filter(Boolean).join(' · ');
+  error.textContent=[...audio.failures,...audio.music.failures,current().panel.layers?.length?'Character layers are not supported by this reader yet; showing original flat art.':'',processingError].filter(Boolean).join(' · ');
   document.querySelector('.study')!.textContent=options.partial?`${script.pages.length}/${options.totalPages} pages ready`:`${script.pages.length} pages · original art`;
   const mode=($('mode') as HTMLSelectElement).value;
   stage.setAttribute('aria-label',mode==='tap'?'Advance to next panel':'Pause or resume scene');
@@ -83,7 +98,10 @@ async function show(next:number,play=false,replay=false) {
     let texture=textures.get(url);
     if(!texture) {texture=await Assets.load<Texture>(url);textures.set(url,texture);}
     if(token!==navigation) return;
-    if(!await audio.prepare(panel)||token!==navigation) return;
+    const scene=script.version===2?panel.scene:null;
+    const [panelReady,music]=await Promise.all([audio.prepare(panel),audio.music.prepare(scene??null,script.version===2&&scene?script.scenes[scene].beds:[],base)]);
+    if(!panelReady||!music||token!==navigation)return;
+    audio.music.select(music,canonicalSceneOffset(script,index,Object.fromEntries([...audio.clips].map(([k,v])=>[k,v.duration]))),next===old+1&&!replay,play&&!classic);
     plane.destroy();active?.destroy({texture:false,textureSource:false});
     previousWorld.removeChildren().forEach(child=>child.destroy({texture:false,textureSource:false}));
     active=new Sprite(texture);world.addChild(active);
@@ -97,7 +115,7 @@ async function show(next:number,play=false,replay=false) {
     previous=oldRect&&entries[old].page===entries[next].page&&!replay?oldRect:null;
     pageFade=oldRect!==null&&entries[old].page!==entries[next].page&&!reduce;
     transitionKind=previous?script.pages[entries[old].page].panels[entries[old].panel].transition_out.type:pageFade?'fade':'cut';
-    transition=previous&&!reduce&&transitionKind!=='cut'?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade ? .2 : 0;
+    transition=reduce||replay?0:next===old+1?incomingTransition(script,next):previous&&transitionKind!=='cut'?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade?.2:0;
     if(transition&&previous&&transitionKind!=='glide'&&oldTexture)previousWorld.addChild(new Sprite(oldTexture));
     if(transition)glides++;
     ready=true;loading=false;switches++;
@@ -108,6 +126,7 @@ async function show(next:number,play=false,replay=false) {
   } catch(e) {
     if(token!==navigation)return;
     loading=false;error.textContent=`Could not load panel: ${String(e)}`;metrics.errors.push(String(e));status.textContent='Replay to retry';
+    audio.music.pause();
   }
 }
 async function togglePlay() {
@@ -128,7 +147,7 @@ $('prev').onclick=()=>void action(()=>advance(-1));
 $('replay').onclick=()=>void action(()=>show(index,true,true));
 stage.onclick=()=>void action(()=>auto?togglePlay():advance(1));
 stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>auto?togglePlay():advance(1));}};
-$('mode').onchange=()=>{const mode=($('mode') as HTMLSelectElement).value;auto=mode==='auto';flow?.setEnabled(mode==='flow'||(auto&&matchMedia('(max-width:650px)').matches));if(auto&&!audio.playing)void action(togglePlay);updateHud();};
+$('mode').onchange=()=>{const mode=($('mode') as HTMLSelectElement).value;auto=mode==='auto'||mode==='silent';applyAudioLevels();flow?.setEnabled(mode==='flow'||(auto&&matchMedia('(max-width:650px)').matches));if(auto&&!audio.playing)void action(togglePlay);updateHud();};
 $('speed').onchange=()=>void action(async()=>{
   if(!options.series||!options.chapter)return;
   const control=$('speed') as HTMLSelectElement;
@@ -137,7 +156,7 @@ $('speed').onchange=()=>void action(async()=>{
     const info=await setPacing(options.series,options.chapter,Number(control.value));
     const response=await fetch(info.script_url);if(!response.ok)throw Error('New timing is unavailable');
     const data=await response.json();
-    const next=validateMotionScript(data,new Ajv({allErrors:true}).compile(schema)) as MotionScript;
+    const next=await validateSupportedScript(data,validators) as MotionScript;
     if(JSON.stringify(next.pages.map(p=>[p.id,p.image,p.size,p.panels.map(q=>q.id)]))!==JSON.stringify(script.pages.map(p=>[p.id,p.image,p.size,p.panels.map(q=>q.id)])))throw Error('Chapter changed; reopen it from Library');
     script=next;options.scriptUrl=info.script_url;options.readingWpm=info.reading_wpm;
     // Original assets are immutable; existing textures remain valid, audio's
@@ -146,7 +165,8 @@ $('speed').onchange=()=>void action(async()=>{
   }catch(e){error.textContent=String(e);control.value=String(options.readingWpm??240);}
   finally{control.disabled=false;}
 });
-$('sfx').onchange=()=>{audio.sfxGain.gain.cancelScheduledValues(0);audio.sfxGain.gain.value=($('sfx') as HTMLInputElement).checked?1:0;};
+$('sfx').onchange=applyAudioLevels;
+for(const id of ['music-enable','ambience-enable','voice-enable','music-level','ambience-level','voice-level','sfx-level'])$(id).oninput=applyAudioLevels;
 $('reduce').onchange=()=>{reduce=($('reduce') as HTMLInputElement).checked;updateHud();};
 motionSelect.onchange=()=>{motionPreset=motionSelect.value;};
 $('depth').onchange=()=>{depth=($('depth') as HTMLInputElement).checked;};
@@ -162,8 +182,10 @@ document.addEventListener('keydown',e=>{
 
 async function init() {
   const response=await fetch(options.scriptUrl);if(!response.ok)throw Error('Chapter playback is unavailable; return to Library and retry');
-  const data=await response.json();const validate=new Ajv({allErrors:true}).compile(schema);
-  script=validateMotionScript(data,validate) as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+  const data=await response.json();
+  script=await validateSupportedScript(data,validators) as MotionScript;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+  for(const bus of ['music','ambience'] as const){const available=script.version===2&&Object.values(script.scenes).some(s=>s.beds.some(b=>b.bus===bus));($(`${bus}-enable`) as HTMLInputElement).disabled=!available;($(`${bus}-enable`) as HTMLInputElement).checked=available;}
+  const hasVoice=script.pages.some(p=>p.panels.some(q=>q.timeline.some(e=>e.type==='line')));($('voice-enable') as HTMLInputElement).disabled=!hasVoice;($('voice-enable') as HTMLInputElement).checked=hasVoice;
   for(const page of script.pages)pageBases.set(page.id,options.assetBase);
   document.querySelector('.study')!.textContent=`${script.pages.length} pages · original art`;
   const hasSfx=script.pages.some(p=>p.panels.some(panel=>panel.timeline.some(event=>event.type==='sfx')));
@@ -171,6 +193,7 @@ async function init() {
   sfxControl.disabled=!hasSfx;sfxControl.checked=hasSfx;
   sfxControl.parentElement!.title=hasSfx?'Play this chapter’s sound effects':'This chapter has no sound effects yet';
   if(!hasSfx){sfxControl.parentElement!.lastChild!.textContent='No SFX';audio.sfxGain.gain.value=0;}
+  applyAudioLevels();
   ($('mode') as HTMLSelectElement).options[1].textContent=options.readingWpm?'Auto':'Auto (preview)';
   $('speed-wrap').hidden=!options.series||!!options.comparison;
   const speed=$('speed') as HTMLSelectElement;
@@ -183,7 +206,7 @@ async function init() {
   stage.appendChild(app.canvas);app.stage.addChild(previousWorld,previousMask,world,frameMask,effectsOverlay);world.mask=frameMask;previousWorld.mask=previousMask;
   flow=new FlowController(stage.parentElement!,entries.length,
     next=>{if(!loading&&next!==index)void action(()=>show(next,true));else flow?.sync(index);},
-    ()=>{if(loading)return;audio.pause();auto=false;($('mode') as HTMLSelectElement).value='flow';void action(()=>{});updateHud();},
+    ()=>{if(loading)return;audio.pause();auto=false;($('mode') as HTMLSelectElement).value='flow';applyAudioLevels();void action(()=>{});updateHud();},
     wasPlaying=>{if(wasPlaying)updateHud();else void action(togglePlay);},()=>audio.playing);
   if(matchMedia('(max-width:650px)').matches){($('mode') as HTMLSelectElement).value='flow';flow.setEnabled(true);}
   reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;($('reduce') as HTMLInputElement).checked=reduce;
@@ -215,7 +238,7 @@ async function init() {
     // Future dialogue events already play through the voice bus and share the clock.
     if(activeLine?.type==='line')$('caption').textContent=activeLine.text;
     if(audio.playing){clockErrors.push(Math.abs(audio.time()-time)*1000);if(clockErrors.length>3600)clockErrors.shift();}
-    if(audio.playing&&time>=audio.duration+transition-.001){audio.finish();if(auto&&index<entries.length-1)void show(index+1,true);else updateHud();}
+    if(audio.playing&&time>=audio.duration+transition-.001){audio.finish();if(auto&&index<entries.length-1)void show(index+1,true);else{audio.music.pause();updateHud();}}
   });
   await show(0);
   async function refreshPages(){
@@ -227,12 +250,15 @@ async function init() {
       options.totalPages=info.total_pages;
       if(info.script_url!==options.scriptUrl){
         const response=await fetch(info.script_url);if(!response.ok)throw Error('New pages are unavailable');
-        const next=validateMotionScript(await response.json(),validate) as MotionScript;
-        if(next.chapter!==script.chapter||next.direction!==script.direction||next.pages.length<script.pages.length||
+        const next=await validateSupportedScript(await response.json(),validators) as MotionScript;
+        if(next.version!==script.version||JSON.stringify(next.characters)!==JSON.stringify(script.characters)||
+           (script.version===2&&next.version===2&&Object.entries(script.scenes).some(([id,scene])=>JSON.stringify(next.scenes[id])!==JSON.stringify(scene)))||
+           next.chapter!==script.chapter||next.direction!==script.direction||next.pages.length<script.pages.length||
            JSON.stringify(next.pages.slice(0,script.pages.length))!==JSON.stringify(script.pages))throw Error('Saved scenes changed; reopen the chapter to use the new version');
         const oldCount=entries.length;
         for(const page of next.pages.slice(script.pages.length))pageBases.set(page.id,info.asset_base);
         script=next;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+        for(const bus of ['music','ambience'] as const)if(script.version===2&&Object.values(script.scenes).some(s=>s.beds.some(b=>b.bus===bus))){const control=$(`${bus}-enable`) as HTMLInputElement;if(control.disabled){control.disabled=false;control.checked=true;applyAudioLevels();}}
         flow?.setCount(entries.length);flow?.sync(index);options.scriptUrl=info.script_url;
         if(auto&&ready&&!loading&&index===oldCount-1&&audio.offset>=audio.duration+transition&&index<entries.length-1)void show(index+1,true);
       }
@@ -243,7 +269,7 @@ async function init() {
   }
   if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:audio.sfxGain.gain.value===0,sfxRms:audio.sfxRms(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }

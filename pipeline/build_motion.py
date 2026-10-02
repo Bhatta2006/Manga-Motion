@@ -1,4 +1,4 @@
-"""Compile an analyzed imported chapter to MotionScript v1; no models or APIs."""
+"""Compile an analyzed chapter to approved MotionScript v2 with local audio."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from pipeline.motion.pacing import configured_rate, pacing_labels
 from pipeline.motion.timing import reading_rate, PACING_REVISION
 from pipeline.director.settings import series_notes
 from pipeline.audio.scene import prepare_pages as prepare_sfx,append_events
+from pipeline.audio.music import prepare_pages as prepare_music,attach as attach_music
 from pipeline.motion.serialize import validate_contract
 from pipeline.runtime.scheduler import StageScheduler, StageExecutionError
 from pipeline.store import ChapterStore, read_json, write_json
@@ -85,6 +86,9 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
             audits.append({'page': page['id'], 'page_sha256': page['page_sha256'],
                            'panels': compiled['audit'], 'review': compiled['review']})
             audits[-1]['readability'] = compiled['readability']
+        music,music_stage=prepare_music(store,[{'id':p['id'],**records[p['page_sha256']]} for p in analysis['pages']],
+                           [store.asset(p['image']) for p in analysis['pages']],runtime,progress)
+        script=attach_music(script,music)
         validation_started = time.perf_counter()
         validation = validator(script)
         validation_seconds = time.perf_counter() - validation_started
@@ -97,21 +101,27 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         write_json(store.asset('cache/camera-audit.json'), {'revision': CameraAdapter.revision, 'pages': audits,
                    'reading_wpm':rate, 'script_hash':object_hash(script)})
         write_json(store.asset('cache/scene-sfx.json'),{'revision':sfx_stage['revision'],'pages':[{'page_sha256':digest,**value} for digest,value in sound_map.items()]})
+        write_json(store.asset('cache/music-scenes.json'),{'revision':music_stage['revision'],'pages':music,'analysis_sha256':object_hash(analysis),'director_sha256':object_hash(directed)})
         from pipeline.audio.sfx_map import CATEGORIES
         from pipeline.audio.sfx_library import RATE,REVISION as sound_recipe
         write_json(store.checked(store.root/'sfx/manifest.json'),{'recipe':sound_recipe,'sample_rate':RATE,'categories':sorted(CATEGORIES),
                    'source':'MangaMotion owned procedural recipes; no third-party recordings','license':'Project-generated; personal use authorized',
                    'assets_location':'Each chapter sfx/; exact file hashes and provenance in its cache/scene-sfx.json'})
+        from pipeline.audio.music_library import REVISION,PROFILES,AMBIENCE,RATE as music_rate
+        write_json(store.checked(store.root/'music/manifest.json'),{'recipe':REVISION,'profiles':sorted(PROFILES),'ambience':sorted(AMBIENCE),'sample_rate':music_rate,
+                   'source':'MangaMotion owned procedural tones/noise','license':'Project-generated; personal use authorized',
+                   'assets_location':'Chapter music/ambience; exact provenance in cache/music-scenes.json'})
         write_json(store.asset('motionscript.json'), script)
         if persist_rate:
             write_json(store.checked(store.series_root/'pacing.json'), {'reading_wpm':rate})
-        metrics = {'stage': stage,'sfx_stage':sfx_stage, 'validation': validation, 'validation_seconds': round(validation_seconds, 6),
+        metrics = {'stage': stage,'sfx_stage':sfx_stage,'music_stage':music_stage, 'validation': validation, 'validation_seconds': round(validation_seconds, 6),
                    'elapsed_seconds': round(time.perf_counter() - started, 6), 'pages_total': len(script['pages']),
                    'panels_total': sum(len(p['panels']) for p in script['pages']),
                    'motionscript_sha256': page_sha256(store.asset('motionscript.json')),
                    'timeline_seconds': sum(a['duration_seconds'] for p in audits for a in p['panels']),
                    'audio_seconds': sum(a['duration'] for v in sound_map.values() for a in v['assets']),
                    'sfx_events':sum(len(v['events']) for v in sound_map.values()),
+                   'music_review_flags':sum(len(v['review']) for v in music),
                    'review_flags': sum(len(p['review']) for p in audits)+sum(len(v['review']) for v in sound_map.values())}
         return script, metrics
 

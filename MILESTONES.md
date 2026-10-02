@@ -237,11 +237,13 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M3d3 — Tonal music mixing and immersive audio evaluation (≤2 days)
 
+**Status:** technical playback/publication verified in `reports/M3d3.md`; actual-device listening and story suitability remain open.
+
 - **Goal:** make music audible but unobtrusive and synchronized with scene progression.
 - **Deliverables:** separate music/ambience/SFX/voice buses, scene crossfades/looping, ducking, levels/mutes, pause/resume/manual-seek behavior, subjective device trial.
 - **Files/modules:** `reader/src/{music.ts,mixer.ts,player.ts}`, `pipeline/audio/mix.py`, `reports/M3d3.md`.
 - **Tests:** no resets each panel, no clicks/clipping, bus/mute/duck envelopes, pause/seek/scene-change continuity, music duration excluded from panel dwell, silent mode.
-- **Acceptance checklist:** [ ] correct scene/mood bed plays locally; [ ] same-scene transitions continuous; [ ] no clicks/clipping; [ ] music never holds up reading timer; [ ] user judges it noticeable, immersive and quiet enough on actual device; [ ] independent controls work.
+- **Acceptance checklist:** [x] selected scene/mood bed plays locally (correctness still reviewable); [x] same-scene transitions continuous; [x] no tested fade/loop discontinuity or clipping; [x] music never holds up reading timer; [ ] user judges it noticeable, immersive and quiet enough on actual device; [x] independent controls work.
 - **Measurements:** loudness/true peak, ducking/crossfade envelope, reader frame/CPU/memory cost, mood match and distraction ratings.
 - **Known risks:** physical output level varies by device; final gains require listening. Depends on approved M3d1 contract if fields change.
 
@@ -335,4 +337,6 @@ After M1e–g and M3a–c technical delivery, **15 planned slices remain**: M3d1
 
 After explicit M3d1 approval and M3d2 preparation delivery, **13 implementation slices remain**: M3d3, four M4 slices, four M5 slices and four deferred voice slices. Outstanding quality/device gates are additional acceptance work.
 
-Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; M3d1 is the next concrete proposal gate.
+After M3d3 technical delivery, **12 implementation slices remain**: four M4 slices, four M5 slices and four deferred voice slices. Earlier quality/device gates and camera refinements remain additional acceptance work.
+
+Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; the exact M3d1 v2 proposal is explicitly approved.

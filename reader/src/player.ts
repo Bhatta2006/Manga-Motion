@@ -1,4 +1,5 @@
-import type { Panel, LineEvent, SfxEvent } from './types';
+import type { Panel, LineEvent, SfxEvent } from './script-types';
+import {SceneMusic} from './music';
 import { clamp, durationOf, outputTime } from './core.js';
 import {duckPoints,scheduleDuck} from './sfx.js';
 
@@ -8,11 +9,14 @@ export class AudioTimeline {
   readonly voiceGain=this.context.createGain();
   readonly sfxDuck=this.context.createGain();
   readonly analyser=this.context.createAnalyser();
+  readonly output=this.context.createGain();
+  readonly music=new SceneMusic(this.context,this.output);
   readonly clips=new Map<string,AudioBuffer>();
   sources:AudioBufferSourceNode[]=[];
+  private sourceGains=new Map<AudioBufferSourceNode,GainNode>();
   failures:string[]=[];
   startAt=0;offset=0;duration=1;transition=0;playing=false;generation=0;
-  constructor(public assetBase='/chapter/') { this.analyser.fftSize=256;this.sfxGain.connect(this.sfxDuck);this.sfxDuck.connect(this.analyser);this.analyser.connect(this.context.destination);this.voiceGain.gain.value=.6;this.voiceGain.connect(this.context.destination); }
+  constructor(public assetBase='/chapter/') { this.output.gain.value=.8;this.output.connect(this.context.destination);this.analyser.fftSize=256;this.sfxGain.connect(this.sfxDuck);this.sfxDuck.connect(this.analyser);this.analyser.connect(this.output);this.voiceGain.gain.value=.6;this.voiceGain.connect(this.output); }
   sfxRms() { const values=new Float32Array(this.analyser.fftSize);this.analyser.getFloatTimeDomainData(values);return Math.sqrt(values.reduce((s,v)=>s+v*v,0)/values.length); }
   async unlock() { if (this.context.state!=='running') await this.context.resume(); }
   async prepare(panel:Panel) {
@@ -44,6 +48,7 @@ export class AudioTimeline {
     this.stopSources();this.transition=transition;
     this.startAt=this.context.currentTime+.02-this.offset;
     this.playing=true;
+    this.music.play(panel,Object.fromEntries([...this.clips].map(([k,v])=>[k,v.duration])),transition,this.offset);
     scheduleDuck(this.sfxDuck.gain,duckPoints(panel,Object.fromEntries([...this.clips].map(([k,v])=>[k,v.duration])),transition),this.offset,this.context.currentTime+.02);
     const length=this.duration+transition;
     // A silent buffer keeps a genuine output-device clock even on silent panels.
@@ -59,15 +64,16 @@ export class AudioTimeline {
       if(t+buffer.duration<=this.offset) continue;
       const source=this.context.createBufferSource();source.buffer=buffer;
       const gain=this.context.createGain();gain.gain.value=event.type==='sfx'?10**(event.gain_db/20):1;
+      this.sourceGains.set(source,gain);
       source.connect(gain);gain.connect(event.type==='sfx'?this.sfxGain:this.voiceGain);
       const skipped=Math.max(0,this.offset-t);
-      source.onended=()=>{source.disconnect();gain.disconnect();};
+      source.onended=()=>{source.disconnect();gain.disconnect();this.sourceGains.delete(source);};
       source.start(Math.max(this.context.currentTime+.02,this.startAt+t),skipped);this.sources.push(source);
     }
   }
   time() { return this.playing?clamp(outputTime(this.context,performance.now())-this.startAt,0,this.duration+this.transition):this.offset; }
-  pause() { this.offset=this.time();this.playing=false;this.stopSources(); }
+  pause() { this.offset=this.time();this.playing=false;this.stopSources();this.music.pause(); }
   finish() { this.offset=this.duration+this.transition;this.playing=false;this.stopSources(); }
   cancel() { ++this.generation;this.playing=false;this.offset=0;this.stopSources(); }
-  stopSources() { for(const source of this.sources) { try {source.stop();}catch{} source.disconnect(); } this.sources=[];this.sfxDuck.gain.cancelScheduledValues(this.context.currentTime);this.sfxDuck.gain.setValueAtTime(1,this.context.currentTime); }
+  stopSources() { const now=this.context.currentTime;for(const source of this.sources) { try {const gain=this.sourceGains.get(source);if(gain){gain.gain.cancelAndHoldAtTime(now);gain.gain.linearRampToValueAtTime(0,now+.015);source.stop(now+.016);}else{source.stop();source.disconnect();}}catch{} } this.sources=[];this.sfxDuck.gain.cancelScheduledValues(now);this.sfxDuck.gain.setValueAtTime(1,now); }
 }

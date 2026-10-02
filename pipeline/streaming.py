@@ -1,10 +1,12 @@
-"""Validated ordered v1 prefixes, published while the one OCR adapter is resident."""
+"""Validated ordered v2 prefixes, published after each directed page."""
 from __future__ import annotations
 import copy
 import time
 import os
 from pathlib import Path
 from pipeline.audio.scene import prepare_pages as prepare_sfx,append_events
+from pipeline.audio.music import prepare_pages as prepare_music,attach as attach_music
+from pipeline.adapters.music import MusicAdapter
 from pipeline.cache import page_sha256, cache_key
 from pipeline.ingest.hashes import object_hash
 from pipeline.motion.compiler import compile_page, CameraAdapter, VerifiedCameraCache, camera_record
@@ -35,10 +37,10 @@ class StreamingPublisher:
         self.labels=(labels or {}).get('pages',{})
         if not isinstance(self.labels,dict):raise ValueError('Invalid pacing labels')
         if set(self.labels)-{p['page_sha256'] for p in manifest['pages']}:raise ValueError('Unknown pacing label page')
-        self.compilation_id=object_hash({'rate':self.rate,'labels':self.labels,'revision':CameraAdapter.revision})
+        self.compilation_id=object_hash({'rate':self.rate,'labels':self.labels,'revision':CameraAdapter.revision,'music_revision':MusicAdapter(store).revision,'contract_version':2})
         retained=streaming_record(store,job_id)
         self.retained=retained if retained and retained.get('compilation_id')==self.compilation_id else None
-        self.pending={};self.done=[];self.compiled=[];self.audit=[]
+        self.pending={};self.done=[];self.compiled=[];self.audit=[];self.music=[]
         self.metrics={'page_publish_seconds':[], 'first_page_seconds':None,'ready_pages':0}
         self.started=time.perf_counter()
 
@@ -69,6 +71,9 @@ class StreamingPublisher:
             sounds,sound_metrics=prepare_sfx(self.store,{digest:record},[self.store.asset(entry['image'])],Path(os.environ['MANGAMOTION_RUNTIME']))
             append_events(panels,sounds[0])
             self.metrics.setdefault('sfx_stages',[]).append(sound_metrics)
+            music,music_metrics=prepare_music(self.store,[{'id':entry['id'],**record}],[self.store.asset(entry['image'])],Path(os.environ['MANGAMOTION_RUNTIME']),
+                                            previous=self.music[-1]['state'] if self.music else None)
+            self.metrics.setdefault('music_stages',[]).append(music_metrics)
             for panel in panels:
                 panel['id']=f'{entry["id"]}_{panel["id"]}'
                 for focus in panel['director']['focus']:
@@ -76,6 +81,7 @@ class StreamingPublisher:
             candidate=self.compiled+[{'id':entry['id'],'image':entry['image'],'size':entry['size'],'panels':panels}]
             script={'version':1,'chapter':f'{self.store.series}/{self.store.chapter}',
                     'direction':self.manifest['settings']['direction'],'characters':{},'pages':candidate}
+            script=attach_music(script,self.music+music)
             self.validator(script)
             # Recheck all prefix assets: earlier bytes cannot be changed unnoticed.
             for earlier in self.manifest['pages'][:len(candidate)]:
@@ -86,10 +92,11 @@ class StreamingPublisher:
             payload['semantic_review_pages']=sum(bool(p.get('semantics',{}).get('needs_review')) for p in self.done+[current])
             payload['checksum']=object_hash(payload)
             if self.retained and len(candidate)<self.retained['ready_pages']:
-                if candidate!=self.retained['script']['pages'][:len(candidate)]:raise ValueError('Retried stream changed saved scenes')
+                if script['pages']!=self.retained['script']['pages'][:len(candidate)] or any(self.retained['script'].get('scenes',{}).get(k)!=v for k,v in script['scenes'].items()):raise ValueError('Retried stream changed saved scenes')
             else:
                 write_json(self.store.asset('cache/stream-playback.json'),payload)
             self.compiled=candidate;self.done.append(current)
+            self.music+=music
             self.metrics['page_publish_seconds'].append(round(time.perf_counter()-started,6))
             self.metrics['ready_pages']=max(len(candidate),(self.retained or {}).get('ready_pages',0))
             if self.metrics['first_page_seconds'] is None:self.metrics['first_page_seconds']=round(time.perf_counter()-self.started,6)

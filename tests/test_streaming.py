@@ -37,8 +37,24 @@ class StreamingTests(unittest.TestCase):
         later=streaming_record(self.store)
         self.assertEqual(later['ready_pages'],3)
         self.assertEqual(later['script']['pages'][:2],first['script']['pages'])
+        self.assertEqual(later['script']['version'],2)
+        for key,value in first['script']['scenes'].items():self.assertEqual(later['script']['scenes'][key],value)
         self.assertEqual(read_snapshot(self.store,info['snapshot']),saved)
         self.assertFalse(self.store.asset('motionscript.json').exists())
+
+    def test_directed_stream_exactly_matches_final_music_and_timeline(self):
+        from pipeline.build_motion import build_motion
+        source=ROOT/'library/golden-m1d/chapter'
+        write_json(self.store.asset('analysis.json'),self.analysis)
+        directed=read_json(source/'cache/director.json');write_json(self.store.asset('cache/director.json'),directed)
+        for name in ('pacing-labels.json',):
+            if (source/name).exists():shutil.copyfile(source/name,self.store.asset(name))
+        publisher=StreamingPublisher(self.store,self.manifest)
+        by_hash={p['page_sha256']:p for p in directed['pages']}
+        for page in self.analysis['pages']:publisher.publish({**page,**by_hash[page['page_sha256']]})
+        streamed=streaming_record(self.store)['script']
+        final,_=build_motion(self.store.root,self.store.series,self.store.chapter,Path(os.environ['MANGAMOTION_RUNTIME']))
+        self.assertEqual(streamed,final)
 
     def test_failure_preserves_last_valid_prefix_and_corruption_rejected(self):
         publisher=StreamingPublisher(self.store,self.manifest)

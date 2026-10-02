@@ -1,4 +1,4 @@
-import type {Panel,Page,Rect} from './types';
+import type {Panel,Page,Rect} from './script-types';
 export const MOTION_LEVELS:Record<string,number>;
 export function styledCamera(panel:Panel,time:number,preset?:string,reduce?:boolean):Rect;
 export function shakeEligible(page:Page,panel:Panel):boolean;

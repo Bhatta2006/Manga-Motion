@@ -27,6 +27,6 @@ for(const v of [1,2]){
   output+=`export type MotionScriptV${v} = ${render(schema,v)};\n`;
 }
 const file=path.join(root,'reader/src/generated/motionscript.ts');
-if(process.argv.includes('--check')){if(await fs.readFile(file,'utf8')!==output)throw Error('Generated contract types are stale');}
+if(process.argv.includes('--check')){if((await fs.readFile(file,'utf8')).replaceAll('\r\n','\n')!==output)throw Error('Generated contract types are stale');}
 else{await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,output);}
 console.log('Shared v1/v2 contract types '+(process.argv.includes('--check')?'verified':'generated'));

@@ -75,7 +75,7 @@ try{
   await page.locator('#replay').click();
   await page.waitForFunction(()=>window.mangaMotionDiagnostics.sfxRms>0.0001,{},{timeout:6000});
   assert.deepEqual((await diag()).errors,[]);result.legacySfx='audible Web Audio signal through the new asset base';
-  await page.locator('#sfx').uncheck();assert.equal((await diag()).sfxMuted,true);
+  await page.locator('#sfx').uncheck();await page.waitForFunction(()=>window.mangaMotionDiagnostics.sfxMuted);
   assert.deepEqual(errors,[]);result.pageErrors=errors;result.browser=context.browser().version();
   await fs.writeFile(path.join(project,'reports/M1d-browser.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));
 }finally{await context.close();}

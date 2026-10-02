@@ -26,7 +26,7 @@ pause/resume. **Auto** uses adjustable dialogue/caption reading time. Arrows,
 replay, Original page and Reduce motion remain available.
 
 The API stays on loopback. Phone access, actual-device validation, offline PWA behavior, final
-music and character pop-out depth have later acceptance gates. Scene sounds now
+music listening quality and character pop-out depth have later acceptance gates. Scene sounds now
 route locally, with uncertain choices flagged for review. The
 existing `preview/m0b` chapter retains the original procedural SFX prototype;
 new directed chapters include restrained local SFX. Local scene interpretation
@@ -53,6 +53,13 @@ of reliable semantic accuracy. Cache hits avoid model loading entirely.
 
 ## Verify
 
+Directed chapters now include local mood music and ambience using approved
+MotionScript v2. Open **Sound levels** for independent music/ambience/voice/SFX
+controls. **Silent auto** follows reading time with audio muted. Adjacent scenes
+sharing a music bed preserve loop phase; pauses and replay are supported.
+All inferred moods remain reviewable. See `reports/M3d3.md` for measured audio
+and limitations. Character cutout depth is still a later implementation slice.
+
 ```powershell
 . .\scripts\enter-runtime.ps1
 & .\.venv\Scripts\python.exe -m unittest discover -s tests -p 'test_*.py'
@@ -67,6 +74,7 @@ With the API running and the private five-page fixtures present:
 # Choose a fresh series for a genuine cold application-cache measurement.
 & .\.venv\Scripts\python.exe tests\verify_m1d_golden.py --series golden-new-run
 node reader\tests\library-smoke.mjs
+node reader\tests\music-smoke.mjs
 ```
 
 The browser smoke expects the measured `golden-m1d/chapter` and `preview/m0b`

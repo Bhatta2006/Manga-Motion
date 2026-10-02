@@ -11,7 +11,8 @@ class EvaluationTests(unittest.TestCase):
         source=Path(__file__).resolve().parents[1]/'library/golden-m1d/chapter'
         with tempfile.TemporaryDirectory(dir=os.environ['TEMP']) as tmp:
             library=Path(tmp)/'library';store=ChapterStore(library,'golden-m1d','chapter')
-            for directory in ('pages','sfx'):shutil.copytree(source/directory,store.asset(directory))
+            for directory in ('pages','sfx','music','ambience'):
+                if (source/directory).is_dir():shutil.copytree(source/directory,store.asset(directory))
             shutil.copyfile(source/'motionscript.json',store.asset('motionscript.json'))
             original=read_json(store.asset('motionscript.json'));result=prepare(library,'golden-m1d','chapter')
             self.assertEqual(len(result['samples']),3)
