@@ -3,6 +3,7 @@ const phaseNames:Record<string,string>={queued:'Waiting',starting:'Starting',imp
 
 export async function startLibrary(){
   phaseNames['scene-sfx']='Preparing scene sounds';
+  phaseNames['scene-music']='Preparing background music';
   const root=document.querySelector('#app')!;root.classList.add('library-app');
   root.innerHTML=`<header><div class="brand">MangaMotion <span>/ Library</span></div><div class="study">Original art · local processing</div></header>
   <main class="library-main"><section class="library-intro"><p class="eyebrow">Your reading room</p><h1>Bring the page to life.</h1><p>Import a chapter, then follow its panels with camera motion.</p></section>
@@ -31,6 +32,7 @@ export async function startLibrary(){
       const message=document.createElement('p');message.className='job-error';message.textContent=job.error??'Unknown processing error';article.append(message);
       const retry=document.createElement('button');retry.textContent='Retry processing';retry.onclick=async()=>{retry.disabled=true;try{await retryJob(job.id);rendered='';await refresh();}catch(e){error.textContent=String(e);retry.disabled=false;}};actions.append(retry);
     }
+    if(chapter.playable){const review=document.createElement('a');review.className='review-link';review.textContent='Review';review.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter,review:'1'});actions.append(review);}
     article.append(actions);return article;
   }
   async function refresh(){

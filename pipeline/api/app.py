@@ -62,6 +62,12 @@ def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=
         return response
 
     app.include_router(router(jobs, library))
+    from pipeline.api.review import router as review_router
+    from pipeline.review.corrections import recover
+    for path in library.glob('*/*/cache/review-transaction.json'):
+        with ChapterStore(library,path.parent.parent.parent.name,path.parent.parent.name).lock():
+            recover(ChapterStore(library,path.parent.parent.parent.name,path.parent.parent.name))
+    app.include_router(review_router(jobs,library,runtime))
 
     @app.get('/api/health')
     def health():

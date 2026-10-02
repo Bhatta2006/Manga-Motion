@@ -1,4 +1,4 @@
-// Generated from schema/motionscript-v{1,2}.schema.json. Do not edit.
+// Generated from canonical MotionScript v1/v2 and corrections v1 schemas. Do not edit.
 export type V1Rect = [number, number, number, number];
 export type V1Path = string;
 export type V1Page = { "id": string; "image": V1Path; "size": [number, number]; "panels": Array<V1Panel>; };
@@ -21,3 +21,7 @@ export type V2LayerPose = { "u": number; "scale": number; "offset": [number, num
 export type V2LayerSafety = { "method": "conservative-mask-envelope-v1"; "source_sha256": V2Sha256; "mask_sha256": V2Sha256; "transform_sha256": V2Sha256; "max_uncovered_pixels": 0; };
 export type V2CharacterLayer = { "id": string; "kind": "character"; "source_page": string; "source_bbox": V2Rect; "mask": string; "anchor": [number, number]; "depth": number; "poses": Array<V2LayerPose>; "safety": V2LayerSafety; };
 export type MotionScriptV2 = { "version": 2; "chapter": string; "direction": "rtl" | "ltr"; "characters": Record<string, { "voice": string; "name"?: string; }>; "pages": Array<V2Page>; "scenes": Record<string, V2Scene>; };
+export type VCorrectionsPage = { "geometry_sha256": string; "order"?: Array<string>; "order_confirmed"?: boolean; "texts"?: Record<string, VCorrectionsText>; "panels"?: Record<string, VCorrectionsPanel>; };
+export type VCorrectionsText = { "text"?: string; "kind"?: "dialogue" | "caption" | "sfx" | "watermark" | "translator_note" | "sign" | "nonverbal" | "unknown"; "panel_id"?: string | null; "speaker"?: string | null; "confirmed"?: boolean; };
+export type VCorrectionsPanel = { "beat"?: "establish" | "dialogue" | "reaction" | "reveal" | "impact" | "chase" | "comedy" | "flashback" | "quiet" | "transition"; "mood"?: Array<string>; "energy"?: number; "time_skip"?: boolean; "confirmed"?: boolean; };
+export type CorrectionsV1 = { "version": 1; "chapter": string; "input_sha256": string; "pages": Record<string, VCorrectionsPage>; };

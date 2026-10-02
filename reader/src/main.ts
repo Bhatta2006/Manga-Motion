@@ -5,6 +5,7 @@ async function boot(){
   const params=new URLSearchParams(location.search);
   const series=params.get('series'),chapter=params.get('chapter');
   if(series&&chapter){
+    if(params.has('review')){const {startReview}=await import('./review');await startReview(series,chapter);return;}
     const info=await playback(series,chapter);
     const snapshot=params.get('snapshot');
     if(snapshot){

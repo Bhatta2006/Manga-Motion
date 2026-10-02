@@ -180,3 +180,7 @@ On 2026-10-02 the user explicitly answered “Approve the proposed MotionScript 
 ## D37 — Local scene mixer and immutable v2 publication
 
 Publish causal music metadata identically in stream/final scripts and validate real PCM hashes/extents before sealing snapshots. Scene IDs preserve adjacent source phase; seeks use the shared reader transition timeline. Run independent user buses beneath source fades and future voice duck envelopes. Shorten existing outgoing fades on repeated navigation to bound overlap. Interruptible piecewise equal-power ramps replace native value curves after measured seek discontinuity; tests retain native audio rendering evidence. Keep quiet initial gains and expose controls pending physical-device listening. CPU owned music adds no model/API cost; exact voices and export remain separate slices. See `reports/M3d3.md`.
+
+## D38 — Human overlays after model caches
+
+Store strict internal correction data separately from raw OCR/detection/director outputs, binding import/page/geometry and optimistic revisions. Validate it against the canonical corrections schema; derive consumer types. Apply human kinds after model/provisional labels, rebuild only downstream page inputs, and retain causal scene dependencies. Speaker-only edits do not invalidate current visual/audio stages. Journal correction/script/audit publication so interruption restores the last usable pair. Confirmations never invent calibrated confidence; voice/re-voice remains visibly deferred. See `reports/M4a.md`.

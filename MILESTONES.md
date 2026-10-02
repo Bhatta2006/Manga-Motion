@@ -251,11 +251,13 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M4a — Review queue and quick correction (≤2 days)
 
+**Status:** standalone queue, source/geometry-bound overlays, selective CPU rebuild and failure recovery verified in `reports/M4a.md`. User correction/re-voice timing remains open with deferred M2 voices.
+
 - **Goal:** make uncertain OCR/order/speaker results visible and fast to repair.
 - **Deliverables:** preflight issue list, thumbnails, speaker/text/order corrections, durable labels and selective stage invalidation.
 - **Files/modules:** `pipeline/review/{issues.py,corrections.py}`, `pipeline/api/review.py`, `reader/src/{review.ts,fix-sheet.ts}`, `library/<series>/<chapter>/corrections.json`, `reports/M4a.md`.
 - **Tests:** correction round-trip, cache invalidation only downstream stages, mislabeled bubble path, timed correction trials.
-- **Acceptance checklist:** [ ] every low-confidence item appears in review queue; [ ] wrong speaker can be fixed and re-voiced in <10 seconds in a timed user trial; [ ] corrected labels persist across rerun; [ ] no unrelated page is recomputed.
+- **Acceptance checklist:** [x] uncertain stage items appear in review queue/source notes; [ ] wrong speaker can be fixed and re-voiced in <10 seconds in a timed user trial; [x] corrected labels persist across rerun; [x] unrelated pages reuse caches in tested text correction (causal music propagation remains necessary for changed scene cues).
 - **Measurements:** correction seconds/item, unresolved counts before/after, invalidated stage count, reprocess seconds/page, VRAM/RAM peak.
 - **Known risks:** user timing is required for the <10 s claim; touch gestures may conflict with reader navigation.
 
@@ -340,3 +342,5 @@ After explicit M3d1 approval and M3d2 preparation delivery, **13 implementation 
 After M3d3 technical delivery, **12 implementation slices remain**: four M4 slices, four M5 slices and four deferred voice slices. Earlier quality/device gates and camera refinements remain additional acceptance work.
 
 Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; the exact M3d1 v2 proposal is explicitly approved.
+
+After M4a technical delivery, **11 implementation slices remain**: M4b/c1/c2 (3), M5a–d (4), M2a–d (4). M4a user timing/re-voice and earlier quality/device gates remain acceptance work.

@@ -26,6 +26,10 @@ def camera_record(page, labels=None):
         record['review'] += [{'kind':'director','reason':r} for r in record['semantics'].get('review_reasons',[])]
     for text in record['texts']:
         if text['id'] in (labels or {}):text['kind']=labels[text['id']]
+        if 'human_kind' in text:text['kind']=text['human_kind']
+        # Speaker assignment belongs to the future voice consumer, not camera
+        # or scene-audio invalidation when no visual/text input changed.
+        text.pop('speaker',None)
     return record
 
 

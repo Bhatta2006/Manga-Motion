@@ -1,0 +1,33 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "$id":"https://mangamotion.local/schema/corrections-v1",
+  "title":"MangaMotion durable human corrections v1 (pipeline sidecar)",
+  "type":"object","additionalProperties":false,
+  "required":["version","chapter","input_sha256","pages"],
+  "properties":{
+    "version":{"const":1},"chapter":{"type":"string","maxLength":129},
+    "input_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "pages":{"type":"object","maxProperties":2000,"additionalProperties":{"$ref":"#/definitions/page"}}
+  },
+  "definitions":{
+    "page":{"type":"object","additionalProperties":false,"required":["geometry_sha256"],"properties":{
+      "geometry_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+      "order":{"type":"array","maxItems":1000,"uniqueItems":true,"items":{"type":"string","maxLength":64}},
+      "order_confirmed":{"type":"boolean"},
+      "texts":{"type":"object","maxProperties":2000,"additionalProperties":{"$ref":"#/definitions/text"}},
+      "panels":{"type":"object","maxProperties":1000,"additionalProperties":{"$ref":"#/definitions/panel"}}
+    }},
+    "text":{"type":"object","additionalProperties":false,"properties":{
+      "text":{"type":"string","maxLength":4000},
+      "kind":{"type":"string","enum":["dialogue","caption","sfx","watermark","translator_note","sign","nonverbal","unknown"]},
+      "panel_id":{"type":["string","null"],"maxLength":64},
+      "speaker":{"type":["string","null"],"maxLength":64,"pattern":"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"},
+      "confirmed":{"type":"boolean"}
+    }},
+    "panel":{"type":"object","additionalProperties":false,"properties":{
+      "beat":{"type":"string","enum":["establish","dialogue","reaction","reveal","impact","chase","comedy","flashback","quiet","transition"]},
+      "mood":{"type":"array","maxItems":3,"items":{"type":"string","minLength":1,"maxLength":24}},
+      "energy":{"type":"number","minimum":0,"maximum":1},"time_skip":{"type":"boolean"},"confirmed":{"type":"boolean"}
+    }}
+  }
+}

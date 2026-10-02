@@ -16,10 +16,10 @@ const diag=()=>page.evaluate(()=>window.mangaMotionDiagnostics);
 const card=()=>page.locator('[data-series="golden-m1d"][data-chapter="chapter"]');
 const result={};
 try{
-  await page.goto(base);await card().locator('a').waitFor();
+  await page.goto(base);await card().locator('a.read-link').waitFor();
   await page.screenshot({path:path.join(project,'reports/M1d-library-private.png'),fullPage:true});
   for(const viewport of [{width:1280,height:900},{width:390,height:844}]){
-    await page.setViewportSize(viewport);await page.goto(base);await card().locator('a').click();await ready();
+    await page.setViewportSize(viewport);await page.goto(base);await card().locator('a.read-link').click();await ready();
     assert.equal((await diag()).panels,25);const visited=[];
     const chapterScript=JSON.parse(await fs.readFile(path.join(project,'library/golden-m1d/chapter/motionscript.json'),'utf8'));
     const chapterHasSfx=chapterScript.pages.some(p=>p.panels.some(q=>q.timeline.some(e=>e.type==='sfx')));
@@ -60,11 +60,11 @@ try{
   await page.locator('[name=source]').fill(corrupt);await page.locator('[name=series]').fill('golden-m1d');await page.locator('[name=chapter]').fill('chapter');
   await page.locator('#import-submit').click();await page.waitForFunction(()=>document.getElementById('import-message').textContent.includes('queued.'));
   await card().getByText('Processing failed',{exact:true}).waitFor({timeout:20000});assert.ok(await card().locator('.job-error').textContent());
-  assert.equal(await card().locator('a').textContent(),'Read saved version');
+  assert.equal(await card().locator('a.read-link').textContent(),'Read saved version');
   await fs.copyFile(path.join(project,'library/fixtures/m1a/golden.cbz'),corrupt);
   await card().getByRole('button',{name:'Retry processing'}).click();
   await card().getByText('Ready to read',{exact:true}).waitFor({timeout:30000});result.failedImportRetry='visible failure, preserved previous playback, successful retry';
-  await card().locator('a').click();await ready();assert.equal((await diag()).panels,25);
+  await card().locator('a.read-link').click();await ready();assert.equal((await diag()).panels,25);
   // The original SFX preview must still work with immutable API asset URLs.
   await page.goto(base+'/?series=preview&chapter=m0b');await ready();
   assert.equal(await page.locator('#sfx').isDisabled(),false);

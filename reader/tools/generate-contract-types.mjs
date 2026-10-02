@@ -20,12 +20,15 @@ function render(s,v){
   if(['string','boolean','null'].includes(s.type))return s.type;
   throw Error('Unsupported schema shape');
 }
-let output='// Generated from schema/motionscript-v{1,2}.schema.json. Do not edit.\n';
+let output='// Generated from canonical MotionScript v1/v2 and corrections v1 schemas. Do not edit.\n';
 for(const v of [1,2]){
   const schema=JSON.parse(await fs.readFile(path.join(root,`schema/motionscript-v${v}.schema.json`),'utf8'));
   for(const [key,value] of Object.entries(schema.definitions))output+=`export type ${name(v,key)} = ${render(value,v)};\n`;
   output+=`export type MotionScriptV${v} = ${render(schema,v)};\n`;
 }
+const corrections=JSON.parse(await fs.readFile(path.join(root,'schema/corrections-v1.schema.json'),'utf8'));
+for(const [key,value] of Object.entries(corrections.definitions))output+=`export type ${name('Corrections',key)} = ${render(value,'Corrections')};\n`;
+output+=`export type CorrectionsV1 = ${render(corrections,'Corrections')};\n`;
 const file=path.join(root,'reader/src/generated/motionscript.ts');
 if(process.argv.includes('--check')){if((await fs.readFile(file,'utf8')).replaceAll('\r\n','\n')!==output)throw Error('Generated contract types are stale');}
 else{await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,output);}

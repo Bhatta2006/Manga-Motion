@@ -60,6 +60,12 @@ sharing a music bed preserve loop phase; pauses and replay are supported.
 All inferred moods remain reviewable. See `reports/M3d3.md` for measured audio
 and limitations. Character cutout depth is still a later implementation slice.
 
+Use a chapter’s **Review** link to correct text, kinds, panel order, associations
+and scene cues. Fixes are saved separately from original art/model outputs and
+reused on rerun. Speaker IDs can be assigned for the later voice stage; re-voicing
+is pending. Another window’s edits or changed detection geometry are rejected
+before publication. See `reports/M4a.md` for measured saves and recovery tests.
+
 ```powershell
 . .\scripts\enter-runtime.ps1
 & .\.venv\Scripts\python.exe -m unittest discover -s tests -p 'test_*.py'
@@ -75,6 +81,7 @@ With the API running and the private five-page fixtures present:
 & .\.venv\Scripts\python.exe tests\verify_m1d_golden.py --series golden-new-run
 node reader\tests\library-smoke.mjs
 node reader\tests\music-smoke.mjs
+node reader\tests\review-smoke.mjs
 ```
 
 The browser smoke expects the measured `golden-m1d/chapter` and `preview/m0b`
