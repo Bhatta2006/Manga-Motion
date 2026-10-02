@@ -2,6 +2,7 @@ import {chapters,request,retryJob,type Chapter,type Job} from './api';
 const phaseNames:Record<string,string>={queued:'Waiting',starting:'Starting',import:'Importing pages',analysis:'Preparing analysis','magiv3-detection':'Finding panels','vision-normalize':'Ordering panels','baberu-ocr':'Reading text','vision-text-metadata':'Preparing text metadata',director:'Understanding scenes','local-director':'Understanding scenes','camera-solver':'Preparing camera motion',camera:'Preparing camera motion',publishing:'Preparing playback',completed:'Ready to read',interrupted:'Resuming cached work'};
 
 export async function startLibrary(){
+  phaseNames['scene-sfx']='Preparing scene sounds';
   const root=document.querySelector('#app')!;root.classList.add('library-app');
   root.innerHTML=`<header><div class="brand">MangaMotion <span>/ Library</span></div><div class="study">Original art · local processing</div></header>
   <main class="library-main"><section class="library-intro"><p class="eyebrow">Your reading room</p><h1>Bring the page to life.</h1><p>Import a chapter, then follow its panels with camera motion.</p></section>

@@ -114,12 +114,14 @@ def library_entries(root: Path, jobs):
             if stream:pages=stream['script']['pages']
             directed=read_json(store.asset('cache/director.json')) or {}
             semantic_review=stream.get('semantic_review_pages',0) if stream else sum(bool(p.get('semantics',{}).get('needs_review')) for p in directed.get('pages',[]))
+            sounds=read_json(store.asset('cache/scene-sfx.json')) or {}
+            sound_review=sum(len(p.get('review',[]))+sum(bool(e.get('audit',{}).get('needs_review')) for e in p.get('events',[])) for p in sounds.get('pages',[]))
             entries.append({'series':series, 'chapter':chapter, 'pages':len(pages) or len(manifest.get('pages', [])),
                             'playable':bool(pages), 'status':job['status'] if job else ('completed' if pages else 'imported'),
                             'job':job,'partial':bool(stream),'ready_pages':len(pages),
                             'total_pages':len(manifest.get('pages', [])) or len(pages),
                             'semantic_review_pages':semantic_review,
-                            'review_flags':sum(len(p.get('review', [])) for p in analysis.get('pages', []))+semantic_review})
+                            'review_flags':sum(len(p.get('review', [])) for p in analysis.get('pages', []))+semantic_review+sound_review})
         except (ValueError, OSError, TypeError, KeyError):
             continue
     return entries

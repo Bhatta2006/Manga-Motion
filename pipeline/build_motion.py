@@ -17,6 +17,7 @@ from pipeline.motion.compiler import CameraAdapter, VerifiedCameraCache, camera_
 from pipeline.motion.pacing import configured_rate, pacing_labels
 from pipeline.motion.timing import reading_rate, PACING_REVISION
 from pipeline.director.settings import series_notes
+from pipeline.audio.scene import prepare_pages as prepare_sfx,append_events
 from pipeline.motion.serialize import validate_contract
 from pipeline.runtime.scheduler import StageScheduler, StageExecutionError
 from pipeline.store import ChapterStore, read_json, write_json
@@ -67,12 +68,15 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         outputs, stage = scheduler.run_pages(CameraAdapter(records, duration, rate), list(unique.values()),
                                             config={'duration': duration, 'reading_wpm':rate, 'pacing_revision':PACING_REVISION}, page_configs=dependencies, progress=progress)
         mapped = dict(zip(unique, outputs))
+        sounds,sfx_stage=prepare_sfx(store,records,list(unique.values()),runtime,progress)
+        sound_map=dict(zip(unique,sounds))
         script = {'version': 1, 'chapter': f'{series}/{chapter}', 'direction': analysis['direction'],
                   'characters': {}, 'pages': []}
         audits = []
         for page in analysis['pages']:
             compiled = mapped[page['page_sha256']]
             panels = copy.deepcopy(compiled['panels'])
+            append_events(panels,sound_map[page['page_sha256']])
             for panel in panels:
                 panel['id'] = f'{page["id"]}_{panel["id"]}'
                 for focus in panel['director']['focus']:
@@ -92,15 +96,23 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         # No partial contract is published; previous valid output survives any failure above.
         write_json(store.asset('cache/camera-audit.json'), {'revision': CameraAdapter.revision, 'pages': audits,
                    'reading_wpm':rate, 'script_hash':object_hash(script)})
+        write_json(store.asset('cache/scene-sfx.json'),{'revision':sfx_stage['revision'],'pages':[{'page_sha256':digest,**value} for digest,value in sound_map.items()]})
+        from pipeline.audio.sfx_map import CATEGORIES
+        from pipeline.audio.sfx_library import RATE,REVISION as sound_recipe
+        write_json(store.checked(store.root/'sfx/manifest.json'),{'recipe':sound_recipe,'sample_rate':RATE,'categories':sorted(CATEGORIES),
+                   'source':'MangaMotion owned procedural recipes; no third-party recordings','license':'Project-generated; personal use authorized',
+                   'assets_location':'Each chapter sfx/; exact file hashes and provenance in its cache/scene-sfx.json'})
         write_json(store.asset('motionscript.json'), script)
         if persist_rate:
             write_json(store.checked(store.series_root/'pacing.json'), {'reading_wpm':rate})
-        metrics = {'stage': stage, 'validation': validation, 'validation_seconds': round(validation_seconds, 6),
+        metrics = {'stage': stage,'sfx_stage':sfx_stage, 'validation': validation, 'validation_seconds': round(validation_seconds, 6),
                    'elapsed_seconds': round(time.perf_counter() - started, 6), 'pages_total': len(script['pages']),
                    'panels_total': sum(len(p['panels']) for p in script['pages']),
                    'motionscript_sha256': page_sha256(store.asset('motionscript.json')),
                    'timeline_seconds': sum(a['duration_seconds'] for p in audits for a in p['panels']),
-                   'audio_seconds': 0, 'review_flags': sum(len(p['review']) for p in audits)}
+                   'audio_seconds': sum(a['duration'] for v in sound_map.values() for a in v['assets']),
+                   'sfx_events':sum(len(v['events']) for v in sound_map.values()),
+                   'review_flags': sum(len(p['review']) for p in audits)+sum(len(v['review']) for v in sound_map.values())}
         return script, metrics
 
 

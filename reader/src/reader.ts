@@ -11,7 +11,7 @@ import { setPacing, playback } from './api';
 import { FlowController } from './flow';
 import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
 import './motion.css';
-export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number}
+export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean}
 export async function startReader(options:ReaderOptions) {
 
 document.querySelector('#app')!.innerHTML=`
@@ -26,6 +26,7 @@ document.querySelector('.brand span')!.textContent='/ '+options.title;
 if(options.library){const back=document.createElement('a');back.href='/';back.textContent='Library';back.className='library-link';document.querySelector('header')!.append(back);}
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id)! as T;
 const stage=$('stage'),status=$('status'),error=$('error');
+if(options.comparison)$('caption').hidden=true;
 const motionSelect=document.createElement('select');motionSelect.id='motion';motionSelect.setAttribute('aria-label','Motion strength');
 motionSelect.innerHTML='<option value="subtle">Subtle motion</option><option value="normal" selected>Normal motion</option><option value="hype">Hype motion</option>';
 document.querySelector('.options')!.prepend(motionSelect);
@@ -171,7 +172,7 @@ async function init() {
   sfxControl.parentElement!.title=hasSfx?'Play this chapter’s sound effects':'This chapter has no sound effects yet';
   if(!hasSfx){sfxControl.parentElement!.lastChild!.textContent='No SFX';audio.sfxGain.gain.value=0;}
   ($('mode') as HTMLSelectElement).options[1].textContent=options.readingWpm?'Auto':'Auto (preview)';
-  $('speed-wrap').hidden=!options.series;
+  $('speed-wrap').hidden=!options.series||!!options.comparison;
   const speed=$('speed') as HTMLSelectElement;
   if(options.readingWpm&&!Array.from(speed.options).some(o=>o.value===String(options.readingWpm)))speed.add(new Option(`${options.readingWpm} wpm`,String(options.readingWpm)));
   speed.value=String(options.readingWpm??240);

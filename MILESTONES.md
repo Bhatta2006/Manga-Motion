@@ -189,21 +189,25 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M3b — Full move table and comfort controls (≤2 days)
 
+**Status:** bounded v1 implementation verified and pushed; evidence in `reports/M3b.md`. Exact exponential/spring easing, semantic chase direction/blur and demonstrated voiced speaker-follow remain open refinements. Device readability and subjective comfort are not passed.
+
 - **Goal:** translate semantic beats into restrained camera grammar and presets.
 - **Deliverables:** §5.6 move table/transitions, audio-tied keyframes, Subtle/Normal/Hype and Reduce motion, constraint validator.
 - **Files/modules:** `pipeline/motion/{move_table.py,transitions.py,comfort.py}`, `reader/src/{camera.ts,motion-settings.ts}`, `reports/M3b.md`.
 - **Tests:** each beat recipe; maximum scale/pan/shakes; bubble visibility/minimum text size; Reduce motion removes shake/whip/punch; generated transition continuity.
-- **Acceptance checklist:** [ ] all specified beat classes have bounded rules; [ ] no golden-page comfort violation; [ ] Reduce motion disables prohibited moves; [ ] keyframes remain audio-clock synchronized; [ ] art pixels still match source.
+- **Acceptance checklist:** [x] all specified beat classes have bounded rules (v1 approximations explicitly tracked); [x] no golden-page geometric comfort violation (subjective comfort pending); [x] Reduce motion disables prohibited moves; [x] keyframes remain audio-clock synchronized; [x] art pixels still match source.
 - **Measurements:** constraint violations, scale/pan/shake maxima, A/V offset, dropped frames/FPS, seconds/page, VRAM peak (solver expected zero).
 - **Known risks:** geometric constraints do not guarantee comfort; test on the actual reading device and collect subjective scores.
 
 ### M3c — Licensed SFX and blind feel evaluation (≤2 days)
 
+**Status:** local scene SFX, independent mute/ducking, asset repair and anonymous comparison preparation implemented and verified in `reports/M3c.md`. Actual blind chapter ratings and listening/device judgment remain pending.
+
 - **Goal:** add low-cost context SFX and establish whether direction improves the experience.
 - **Deliverables:** documented-license local SFX library/map, voice ducking, chapter preflight, blind static/fixed/director comparison on dialogue/action/comedy material.
 - **Files/modules:** `pipeline/audio/{sfx_library.py,sfx_map.py,mix.py}`, `library/sfx/manifest.json`, `reader/src/sfx.ts`, `reports/M3c.md`.
 - **Tests:** every asset has a license/source record; category-to-asset mapping; gain/ducking check; blind evaluation form; no SFX on silent-only mode.
-- **Acceptance checklist:** [ ] all played assets have personal-use permission; [ ] SFX timing/category is inspectable; [ ] blind “felt directed” and “comfortable” scores average ≥4/5 on supplied test chapters; [ ] zero reported discomfort incidents; [ ] failures remain visible instead of claimed passed.
+- **Acceptance checklist:** [x] all played assets have personal-use permission; [x] SFX timing/category is inspectable; [ ] blind “felt directed” and “comfortable” scores average ≥4/5 on supplied test chapters; [ ] zero reported discomfort incidents; [x] failures remain visible instead of claimed passed.
 - **Measurements:** SFX routing accuracy, mix levels, seconds/page and VRAM/RAM peak, full chapter time, blind scores and discomfort count, API spend.
 - **Known risks:** three full labeled chapters may not exist yet; SFX overuse can reduce quality, so default should be restrained.
 
@@ -323,9 +327,6 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ## Remaining scope after M1d feedback
 
-Current plan: **21 unfinished slices**. **17** cover the current visual/audio/mobile
-scope including streaming and later side-space polish; **4** voice slices (M2a–d)
-remain deferred, not removed. The 17 comprise M1e–g (3), M3a–d3 (6), M4a–c2 (4)
-and M5a–d (4). These are counts, not a completion-date estimate. Outstanding real
-device/independent quality acceptance from completed foundations also remains.
-Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval. After M1e–g and M3a, 17 implementation slices remain, plus outstanding subjective/device evaluations.
+After M1e–g and M3a–c technical delivery, **15 planned slices remain**: M3d1–d3 (3), M4a–c2 (4), M5a–d (4), and four deferred voice slices M2a–d. These are implementation-scope counts, not a completion date or a claim that earlier subjective gates passed. Remaining M3b exact-recipe refinements, independent quality, real-device readability/comfort and continuous-chapter/full-volume trials stay open.
+
+Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; M3d1 is the next concrete proposal gate.

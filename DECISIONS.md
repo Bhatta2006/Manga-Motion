@@ -164,3 +164,9 @@ Keep one page call with interleaved detector-ID crop labels and schema-constrain
 Focus may crop panel surroundings through camera framing, while source pixels stay unchanged. Protect the selected detector-derived region plus every assigned text box, with a maximum 1.4 scale and existing comfort bounds. Hold when no safe focused pose exists; never shrink a frame to hide dialogue. Camera segments, presets and optional semantic effect overlays share the audio clock. Shake is capped, text-edge gated and disabled by Reduce motion. See reports/M3b.md.
 
 Existing v1 enum limits require outQuad shock and piecewise comedy approximations. Exact exponential/spring easing, semantic chase direction and blur remain tracked refinements, not falsely completed PRD details. Future real voice starts are required for demonstrated speaker following. A concrete v2 proposal will cover any necessary contract changes; current playback remains v1.
+
+## D35 — Owned local scene-sound catalog and restrained routing
+
+Use tiny deterministic CPU procedural assets behind a provider instead of adding an audio model. Record exact provenance/hashes and repair assets independently of cached page records. Suppress cues that conflict with human/final text kinds; inferred scene accents remain reviewable, limited to one repeated stylistic category/page and at most three cues/page. No page-turn default. This realizes zero-cost local routing while actual sound appropriateness remains a listening gate; see reports/M3c.md.
+
+Keep user mute separate from a future voice-driven duck envelope. Publish identical SFX in streamed/final v1 snapshots and preserve reading dwell. Prepare anonymous, time/audio-matched static/fixed/directed variants for actual evaluation; never substitute preparation or Web Audio RMS for blind user scores.

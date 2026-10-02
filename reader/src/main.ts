@@ -6,8 +6,14 @@ async function boot(){
   const series=params.get('series'),chapter=params.get('chapter');
   if(series&&chapter){
     const info=await playback(series,chapter);
+    const snapshot=params.get('snapshot');
+    if(snapshot){
+      if(!/^[a-f0-9]{64}$/.test(snapshot))throw Error('Invalid comparison snapshot');
+      const base=`/api/chapters/${encodeURIComponent(series)}/${encodeURIComponent(chapter)}/playback/${snapshot}`;
+      info.script_url=base+'/motionscript.json';info.asset_base=base+'/assets/';info.partial=false;
+    }
     const {startReader}=await import('./reader');
-    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages});return;
+    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:params.has('comparison')?'Comparison sample':`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages,comparison:params.has('comparison')});return;
   }
   const health=await fetch('/api/health');
   if(health.status===404){

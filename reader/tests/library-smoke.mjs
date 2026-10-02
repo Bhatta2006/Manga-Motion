@@ -21,8 +21,10 @@ try{
   for(const viewport of [{width:1280,height:900},{width:390,height:844}]){
     await page.setViewportSize(viewport);await page.goto(base);await card().locator('a').click();await ready();
     assert.equal((await diag()).panels,25);const visited=[];
-    assert.equal(await page.locator('#sfx').isDisabled(),true);
-    assert.equal(await page.locator('#sfx').isChecked(),false);
+    const chapterScript=JSON.parse(await fs.readFile(path.join(project,'library/golden-m1d/chapter/motionscript.json'),'utf8'));
+    const chapterHasSfx=chapterScript.pages.some(p=>p.panels.some(q=>q.timeline.some(e=>e.type==='sfx')));
+    assert.equal(await page.locator('#sfx').isDisabled(),!chapterHasSfx);
+    assert.equal(await page.locator('#sfx').isChecked(),chapterHasSfx);
     assert.equal(await page.locator('#mode option[value=auto]').textContent(),'Auto');
     await page.locator('#mode').selectOption('tap');
     for(let index=0;index<25;index++){

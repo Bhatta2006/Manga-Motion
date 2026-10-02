@@ -26,9 +26,10 @@ pause/resume. **Auto** uses adjustable dialogue/caption reading time. Arrows,
 replay, Original page and Reduce motion remain available.
 
 The API stays on loopback. Phone access, actual-device validation, offline PWA behavior, final
-scene SFX/music and character pop-out depth have later acceptance gates. The
+music and character pop-out depth have later acceptance gates. Scene sounds now
+route locally, with uncertain choices flagged for review. The
 existing `preview/m0b` chapter retains the original procedural SFX prototype;
-new chapters currently contain camera events only. Local scene interpretation
+new directed chapters include restrained local SFX. Local scene interpretation
 uses the measured 4B Qwen profile and stays flagged for review; it is not a claim
 of reliable semantic accuracy. Cache hits avoid model loading entirely.
 

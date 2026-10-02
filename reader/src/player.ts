@@ -1,16 +1,18 @@
 import type { Panel, LineEvent, SfxEvent } from './types';
 import { clamp, durationOf, outputTime } from './core.js';
+import {duckPoints,scheduleDuck} from './sfx.js';
 
 export class AudioTimeline {
   readonly context=new AudioContext({latencyHint:'interactive'});
   readonly sfxGain=this.context.createGain();
   readonly voiceGain=this.context.createGain();
+  readonly sfxDuck=this.context.createGain();
   readonly analyser=this.context.createAnalyser();
   readonly clips=new Map<string,AudioBuffer>();
   sources:AudioBufferSourceNode[]=[];
   failures:string[]=[];
   startAt=0;offset=0;duration=1;transition=0;playing=false;generation=0;
-  constructor(public assetBase='/chapter/') { this.analyser.fftSize=256;this.sfxGain.connect(this.analyser);this.analyser.connect(this.context.destination);this.voiceGain.connect(this.context.destination); }
+  constructor(public assetBase='/chapter/') { this.analyser.fftSize=256;this.sfxGain.connect(this.sfxDuck);this.sfxDuck.connect(this.analyser);this.analyser.connect(this.context.destination);this.voiceGain.gain.value=.6;this.voiceGain.connect(this.context.destination); }
   sfxRms() { const values=new Float32Array(this.analyser.fftSize);this.analyser.getFloatTimeDomainData(values);return Math.sqrt(values.reduce((s,v)=>s+v*v,0)/values.length); }
   async unlock() { if (this.context.state!=='running') await this.context.resume(); }
   async prepare(panel:Panel) {
@@ -42,6 +44,7 @@ export class AudioTimeline {
     this.stopSources();this.transition=transition;
     this.startAt=this.context.currentTime+.02-this.offset;
     this.playing=true;
+    scheduleDuck(this.sfxDuck.gain,duckPoints(panel,Object.fromEntries([...this.clips].map(([k,v])=>[k,v.duration])),transition),this.offset,this.context.currentTime+.02);
     const length=this.duration+transition;
     // A silent buffer keeps a genuine output-device clock even on silent panels.
     const silent=this.context.createBuffer(1,this.context.sampleRate,this.context.sampleRate);
@@ -66,5 +69,5 @@ export class AudioTimeline {
   pause() { this.offset=this.time();this.playing=false;this.stopSources(); }
   finish() { this.offset=this.duration+this.transition;this.playing=false;this.stopSources(); }
   cancel() { ++this.generation;this.playing=false;this.offset=0;this.stopSources(); }
-  stopSources() { for(const source of this.sources) { try {source.stop();}catch{} source.disconnect(); } this.sources=[]; }
+  stopSources() { for(const source of this.sources) { try {source.stop();}catch{} source.disconnect(); } this.sources=[];this.sfxDuck.gain.cancelScheduledValues(this.context.currentTime);this.sfxDuck.gain.setValueAtTime(1,this.context.currentTime); }
 }

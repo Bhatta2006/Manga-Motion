@@ -2,6 +2,9 @@
 from __future__ import annotations
 import copy
 import time
+import os
+from pathlib import Path
+from pipeline.audio.scene import prepare_pages as prepare_sfx,append_events
 from pipeline.cache import page_sha256, cache_key
 from pipeline.ingest.hashes import object_hash
 from pipeline.motion.compiler import compile_page, CameraAdapter, VerifiedCameraCache, camera_record
@@ -63,6 +66,9 @@ class StreamingPublisher:
                 compiled={**compile_page(record,reading_wpm=self.rate),'page_sha256':digest,'adapter_revision':CameraAdapter.revision}
                 cache.write(CameraAdapter.stage_name,key,compiled)
             panels=copy.deepcopy(compiled['panels'])
+            sounds,sound_metrics=prepare_sfx(self.store,{digest:record},[self.store.asset(entry['image'])],Path(os.environ['MANGAMOTION_RUNTIME']))
+            append_events(panels,sounds[0])
+            self.metrics.setdefault('sfx_stages',[]).append(sound_metrics)
             for panel in panels:
                 panel['id']=f'{entry["id"]}_{panel["id"]}'
                 for focus in panel['director']['focus']:
