@@ -171,8 +171,8 @@ Use tiny deterministic CPU procedural assets behind a provider instead of adding
 
 Keep user mute separate from a future voice-driven duck envelope. Publish identical SFX in streamed/final v1 snapshots and preserve reading dwell. Prepare anonymous, time/audio-matched static/fixed/directed variants for actual evaluation; never substitute preparation or Web Audio RMS for blind user scores.
 
-## D36 — Proposed v2 beds, source layers and easing (awaiting approval)
+## D36 — Approved v2 beds, source layers and easing
 
 Following the requested ECC contract-first workflow, prepare the exact reviewable proposal in `docs/proposals/motionscript-music-depth.md` and `schema/proposals/motionscript-v2.schema.json`. Add scene-spanning local music/ambience, masked original-page character planes with bounded poses/hash-bound conservative safety metadata, and outExpo/outBack easing. Keep bed duration out of panel dwell; preserve v1 through explicit version dispatch and lossless flat promotion only. Old chapters/snapshots remain v1. Unknown fields/versions and unsafe paths fail visibly.
 
-This is **proposed, not approved or implemented in production**. Structural fixtures do not establish real layer coverage or perceived depth; no hidden-background invention is allowed. The user retained contract-change approval, so music/layer feature wiring waits for explicit v2 approval. See `reports/M3d1.md` for fixture/negative-case/version-preservation evidence.
+On 2026-10-02 the user explicitly answered “Approve the proposed MotionScript v2,” resolving the approval gate after automatic review rejected the ambiguous “continue.” Promote the exact schema; derive types and validate both versions. Structural fixtures do not establish real layer coverage or perceived depth; no hidden-background invention is allowed. See `reports/M3d1.md` for proposal evidence and `reports/M3d2.md` for approved local music preparation. Music playback and character rendering still require their implementation slices.

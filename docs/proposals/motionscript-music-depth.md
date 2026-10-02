@@ -1,6 +1,6 @@
 # MotionScript v2 proposal — music and source-only character depth
 
-**Status: proposed, awaiting the user's explicit contract approval.** No production v2 reader, compiler, music or character-layer feature is enabled by this proposal. The current production contract is still v1.
+**Status: explicitly approved by the user on 2026-10-02 (“Approve the proposed MotionScript v2”).** The canonical promoted schema is `schema/motionscript-v2.schema.json`. This document records the approved scope; each feature still needs implementation/evidence in its slice. Existing v1 chapters remain supported.
 
 ## Boundary and ownership (ECC contract-first)
 
@@ -85,7 +85,7 @@ The draft and fixtures are under `schema/proposals/`:
 - `v2-spring.example.json`: proposed spring easing.
 - `verify-v2.mjs`: pinned AJV shape checks, shared common-geometry checks, invalid-path/reference/loop/motion/hash cases, easing overshoot check and v1 preservation/flat round trip.
 
-**The files, page, mask and hashes in these examples are structural placeholders. No example audio/mask exists, no real coverage proof was measured, and these fixtures must not be presented as playable music/depth.** The production validator intentionally rejects them as v2.
+**The files, page, mask and hashes in these examples are structural placeholders. No example audio/mask exists, no real coverage proof was measured, and these fixtures must not be presented as playable music/depth.** The unchanged v1 schema rejects them; the approved v2 guard accepts their structural shape, but missing example media cannot pass asset preflight.
 
 ```powershell
 . .\scripts\enter-runtime.ps1

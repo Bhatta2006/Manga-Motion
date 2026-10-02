@@ -2,6 +2,8 @@
 export function clamp(value, low = 0, high = 1) { return Math.min(high, Math.max(low, value)); }
 export function ease(t, name) {
   t=clamp(t);
+  if(name==='outExpo')return (1-2**(-10*t))/(1-2**-10);
+  if(name==='outBack')return 1+2.70158*(t-1)**3+1.70158*(t-1)**2;
   return name==='inOutSine' ? (1-Math.cos(Math.PI*t))/2 : name==='outQuad' ? 1-(1-t)**2 : t;
 }
 export function interpolate(a,b,t) { return a.map((v,i)=>v+(b[i]-v)*t); }

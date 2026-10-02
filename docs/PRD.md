@@ -297,6 +297,8 @@ M1c implements a restrained CPU solver with original page/text protection, analy
 
 ## 6. MotionScript v1 (data contract)
 
+**Approved extension (2026-10-02):** the user explicitly approved MotionScript v2 for persistent local music/ambience, source-only character layers with bounded verified poses, and outExpo/outBack camera easing. Exact canonical fields: `schema/motionscript-v2.schema.json`; behavior/migration: [approved proposal](proposals/motionscript-music-depth.md). Existing v1 schema and saved chapters remain supported. Music assets/cues are prepared in M3d2; audible mixing and real depth have separate implementation/evaluation gates. The original v1 example below remains unchanged.
+
 ```json
 {
   "version": 1,

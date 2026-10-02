@@ -1,0 +1,23 @@
+// Generated from schema/motionscript-v{1,2}.schema.json. Do not edit.
+export type V1Rect = [number, number, number, number];
+export type V1Path = string;
+export type V1Page = { "id": string; "image": V1Path; "size": [number, number]; "panels": Array<V1Panel>; };
+export type V1Panel = { "id": string; "bbox": V1Rect; "director": { "beat": "establish" | "dialogue" | "reaction" | "reveal" | "impact" | "chase" | "comedy" | "flashback" | "quiet" | "transition"; "shot": "wide" | "medium" | "closeup" | "extreme_closeup" | "splash" | "insert"; "energy": number; "mood": Array<string>; "time_skip": boolean; "focus": Array<{ "kind": "face" | "object" | "bubble" | "region"; "ref"?: string; "char"?: string; "bbox": V1Rect; }>; }; "timeline": Array<(V1Camera) | (V1Line) | (V1Sfx)>; "transition_out": { "type": "glide" | "cut" | "fade" | "whip" | "dissolve" | "dip"; "dur": number; }; "confidence": { "panel": number | null; "ocr": number | null; "speaker": number | null; }; };
+export type V1Camera = { "t": number; "type": "camera"; "move": "push_in" | "pull_out" | "pan" | "hold"; "from": V1Rect; "to": V1Rect; "dur": number; "ease": "linear" | "outQuad" | "inOutSine"; };
+export type V1Line = { "t": number; "type": "line"; "bubble": string; "speaker": string; "text": string; "audio": V1Path; "dur": number; "emotion": { "delivery": "speak" | "shout" | "whisper" | "think" | "narrate" | "cry" | "laugh"; "intensity": number; }; "highlight": boolean; };
+export type V1Sfx = { "t": number; "type": "sfx"; "file": V1Path; "gain_db": number; };
+export type MotionScriptV1 = { "version": 1; "chapter": string; "direction": "rtl" | "ltr"; "characters": Record<string, { "voice": string; "name"?: string; }>; "pages": Array<V1Page>; };
+export type V2Rect = [number, number, number, number];
+export type V2Path = string;
+export type V2Page = { "id": string; "image": string; "size": [number, number]; "panels": Array<V2Panel>; };
+export type V2Panel = { "id": string; "bbox": V2Rect; "director": { "beat": "establish" | "dialogue" | "reaction" | "reveal" | "impact" | "chase" | "comedy" | "flashback" | "quiet" | "transition"; "shot": "wide" | "medium" | "closeup" | "extreme_closeup" | "splash" | "insert"; "energy": number; "mood": Array<string>; "time_skip": boolean; "focus": Array<{ "kind": "face" | "object" | "bubble" | "region"; "ref"?: string; "char"?: string; "bbox": V2Rect; }>; }; "timeline": Array<(V2Camera) | (V2Line) | (V2Sfx)>; "transition_out": { "type": "glide" | "cut" | "fade" | "whip" | "dissolve" | "dip"; "dur": number; }; "confidence": { "panel": number | null; "ocr": number | null; "speaker": number | null; }; "scene"?: string; "layers"?: Array<V2CharacterLayer>; };
+export type V2Camera = { "t": number; "type": "camera"; "move": "push_in" | "pull_out" | "pan" | "hold"; "from": V2Rect; "to": V2Rect; "dur": number; "ease": "linear" | "outQuad" | "inOutSine" | "outExpo" | "outBack"; };
+export type V2Line = { "t": number; "type": "line"; "bubble": string; "speaker": string; "text": string; "audio": string; "dur": number; "emotion": { "delivery": "speak" | "shout" | "whisper" | "think" | "narrate" | "cry" | "laugh"; "intensity": number; }; "highlight": boolean; };
+export type V2Sfx = { "t": number; "type": "sfx"; "file": string; "gain_db": number; };
+export type V2Sha256 = string;
+export type V2Scene = { "mood": Array<string>; "beds": Array<V2Bed>; };
+export type V2Bed = { "id": string; "bus": "music" | "ambience"; "file": string; "sha256": V2Sha256; "duration": number; "loop": [number, number]; "gain_db": number; "fade_seconds": number; "duck_db": number; };
+export type V2LayerPose = { "u": number; "scale": number; "offset": [number, number]; };
+export type V2LayerSafety = { "method": "conservative-mask-envelope-v1"; "source_sha256": V2Sha256; "mask_sha256": V2Sha256; "transform_sha256": V2Sha256; "max_uncovered_pixels": 0; };
+export type V2CharacterLayer = { "id": string; "kind": "character"; "source_page": string; "source_bbox": V2Rect; "mask": string; "anchor": [number, number]; "depth": number; "poses": Array<V2LayerPose>; "safety": V2LayerSafety; };
+export type MotionScriptV2 = { "version": 2; "chapter": string; "direction": "rtl" | "ltr"; "characters": Record<string, { "voice": string; "name"?: string; }>; "pages": Array<V2Page>; "scenes": Record<string, V2Scene>; };

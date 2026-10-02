@@ -73,7 +73,8 @@ def validate_contract(script, project: Path | None = None) -> dict:
     keeps Python/reader schema semantics identical. Missing Node fails before
     publication. Script contents go over stdin, never shell interpolation.
     """
-    validate_geometry(script)
+    if script.get('version') == 1: validate_geometry(script)
+    elif script.get('version') != 2: raise ValueError('Unsupported MotionScript version')
     project = project or Path(__file__).resolve().parents[2]
     payload = json.dumps(script, ensure_ascii=False, allow_nan=False)
     try:

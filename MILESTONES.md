@@ -213,23 +213,25 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M3d1 — Music/depth contract proposal (≤1 day; approval gate)
 
-**Status:** concrete ECC contract-first proposal/schema/examples and verification prepared in `reports/M3d1.md`; explicit user version-bump approval remains pending. No production v2 feature is implemented.
+**Status:** concrete ECC contract-first proposal/schema/examples verified in `reports/M3d1.md`; user explicitly approved the exact v2 proposal on 2026-10-02. Schema/version guards/types promoted during M3d2. Feature rendering has its own later gates.
 
 - **Goal:** make necessary scene-spanning audio/layer metadata reviewable before changing v1.
 - **Deliverables:** concrete schema/example diff, reader capability/version strategy, migration and v1 replay plan; proposal only, no feature implementation.
 - **Files/modules:** `docs/proposals/motionscript-music-depth.md`, `schema/proposals/`, `DECISIONS.md`, `reports/M3d1.md`.
 - **Tests:** validate proposed fixtures; show music cannot become panel reading duration; retain existing v1 fixtures and migration round trips.
-- **Acceptance checklist:** [x] exact proposed fields/events/version documented; [x] old chapter behavior preserved by flat promotion and unchanged production v1; [ ] user explicitly approves any version bump before implementation.
+- **Acceptance checklist:** [x] exact proposed fields/events/version documented; [x] old chapter behavior preserved by flat promotion and unchanged production v1; [x] user explicitly approves any version bump before implementation.
 - **Measurements:** proposed artifact size and migration scope; GPU VRAM zero.
 - **Known risks:** current v1 lacks explicit persistent music/layer semantics; product-scope approval is not unseen-schema approval.
 
 ### M3d2 — Local mood music cues and library (≤2 days)
 
+**Status:** CPU tonal/ambience catalog, causal scene cues and cache/prepared-v2 output verified in `reports/M3d2.md`. Existing published playback unchanged in this preparation slice; audible mixing follows in M3d3. Story suitability remains unjudged.
+
 - **Goal:** prepare story/mood-aware tonal beds for F02 at low cost.
 - **Deliverables:** local library/procedural provider adapter, scene mood/energy cue map, continuity/fallback rules, cached cue/audio preparation. No heavy music model or new cloud service.
 - **Files/modules:** `pipeline/audio/{music_library.py,music_cues.py}`, `pipeline/adapters/music.py`, `library/music/manifest.json`, `reports/M3d2.md`.
 - **Tests:** labeled scene/mood selection; uncertain-cue fallback; same-scene continuity; deterministic assets/cache; asset provenance and loop-boundary checks.
-- **Acceptance checklist:** [ ] inspectable mood/scene cue map on real material; [ ] coherent bed across adjacent panels; [ ] low-confidence choices reviewable; [ ] every asset local and recorded; [ ] one-model residency preserved if the director runs.
+- **Acceptance checklist:** [x] inspectable mood/scene cue map on real material; [x] coherent bed metadata across adjacent panels (listening pending); [x] low-confidence choices reviewable; [x] every asset local and recorded; [x] one-model residency preserved (CPU only; current director-resident memory not remeasured).
 - **Measurements:** mood/cue accuracy, uncertain rate, audio build seconds/page/clip, VRAM/RAM and cache/disk cost.
 - **Known risks:** mood inference can be wrong; five mixed pages cannot prove story continuity.
 
@@ -330,5 +332,7 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 ## Remaining scope after M1d feedback
 
 After M1e–g and M3a–c technical delivery, **15 planned slices remain**: M3d1–d3 (3), M4a–c2 (4), M5a–d (4), and four deferred voice slices M2a–d. These are implementation-scope counts, not a completion date or a claim that earlier subjective gates passed. Remaining M3b exact-recipe refinements, independent quality, real-device readability/comfort and continuous-chapter/full-volume trials stay open.
+
+After explicit M3d1 approval and M3d2 preparation delivery, **13 implementation slices remain**: M3d3, four M4 slices, four M5 slices and four deferred voice slices. Outstanding quality/device gates are additional acceptance work.
 
 Latest authorization removes intermediate milestone approval gates. MotionScript changes still require explicit approval; M3d1 is the next concrete proposal gate.
