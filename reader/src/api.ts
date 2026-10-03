@@ -1,11 +1,12 @@
 export interface Job {id:string;series:string;chapter:string;status:'queued'|'running'|'failed'|'completed';phase:string;error:string|null;attempts:number;progress:{completed?:number;total?:number;state?:string}}
+import {offlineLibrary,savedPlayback} from './offline';
 export interface Chapter {series:string;chapter:string;pages:number;playable:boolean;status:string;job:Job|null;review_flags:number;semantic_review_pages?:number;partial?:boolean;ready_pages?:number;total_pages?:number}
-export interface Playback {script_url:string;asset_base:string;snapshot:string;pages:number;panels:number;reading_wpm:number|null;partial?:boolean;total_pages?:number;processing_status?:string;processing_error?:string|null}
+export interface Playback {script_url:string;asset_base:string;snapshot:string;pages:number;panels:number;reading_wpm:number|null;partial?:boolean;total_pages?:number;processing_status?:string;processing_error?:string|null;offline?:boolean}
 export async function request<T>(url:string,body?:unknown):Promise<T>{
   const response=await fetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const data=await response.json();if(!response.ok)throw Error(typeof data.detail==='string'?data.detail:`Request failed (${response.status})`);return data as T;
 }
-export const chapters=()=>request<{chapters:Chapter[];worker_error?:string|null}>('/api/library');
+export const chapters=()=>request<{chapters:Chapter[];worker_error?:string|null;offline?:boolean}>('/api/library').catch(async e=>{if(!(e instanceof TypeError))throw e;return offlineLibrary();});
 export const retryJob=(id:string)=>request<Job>(`/api/jobs/${encodeURIComponent(id)}/retry`,{});
-export const playback=(series:string,chapter:string)=>request<Playback>(`/api/chapters/${encodeURIComponent(series)}/${encodeURIComponent(chapter)}/playback`);
+export const playback=(series:string,chapter:string)=>request<Playback>(`/api/chapters/${encodeURIComponent(series)}/${encodeURIComponent(chapter)}/playback`).catch(async e=>{if(!(e instanceof TypeError))throw e;return savedPlayback(series,chapter);});
 export const setPacing=(series:string,chapter:string,reading_wpm:number)=>request<Playback>(`/api/chapters/${encodeURIComponent(series)}/${encodeURIComponent(chapter)}/pacing`,{reading_wpm});

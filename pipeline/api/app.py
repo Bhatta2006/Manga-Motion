@@ -108,12 +108,32 @@ def create_app(library=PROJECT/'library', runtime=PROJECT/'.runtime', *, worker=
     def script(series: str, chapter: str, digest: str):
         return read_snapshot(chapter_store(series,chapter),digest)['script']
 
+    @app.get('/api/chapters/{series}/{chapter}/playback/{digest}/manifest')
+    def offline_manifest(series: str, chapter: str, digest: str):
+        record=read_snapshot(chapter_store(series,chapter),digest)
+        return {'snapshot':digest,'assets':record['assets']}
+
     @app.get('/api/chapters/{series}/{chapter}/playback/{digest}/assets/{kind}/{leaf}')
     def asset(series: str, chapter: str, digest: str, kind: str, leaf: str):
         try: return asset_response(chapter_store(series,chapter),digest,f'{kind}/{leaf}')
         except (ValueError,OSError) as exc: raise HTTPException(409,str(exc)) from exc
 
     dist = Path(dist) if dist else PROJECT/'reader/dist'
+    @app.get('/sw.js')
+    def service_worker():
+        import hashlib,json
+        from starlette.responses import Response
+        if not (dist/'index.html').is_file():raise HTTPException(503,'Build reader first')
+        files=['/','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png']+['/assets/'+p.name for p in sorted((dist/'assets').iterdir()) if p.suffix in ('.js','.css')]
+        build=hashlib.sha256((dist/'index.html').read_bytes()).hexdigest()[:16]
+        source=(dist/'sw.js').read_text(encoding='utf-8').replace('__BUILD_ID__',build).replace('__SHELL_FILES__',json.dumps(files))
+        return Response(source,media_type='application/javascript',headers={'Cache-Control':'no-cache','Service-Worker-Allowed':'/','X-Content-Type-Options':'nosniff'})
+
+    for leaf in ('manifest.webmanifest','icon.svg','icon-192.png','icon-512.png'):
+        def public_endpoint(name):
+            def public_file():return FileResponse(dist/name)
+            return public_file
+        app.add_api_route('/'+leaf,public_endpoint(leaf),methods=['GET'],include_in_schema=False)
     @app.get('/')
     def index():
         if not (dist/'index.html').is_file(): raise HTTPException(503,'Build the reader with npm run build --prefix reader')

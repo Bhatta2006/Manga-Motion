@@ -20,9 +20,11 @@ import {reviewUrl} from './review-data';
 import type {Review} from './review-data';
 import {request} from './api';
 import {CharacterLayers} from './character-layers';
+import {saveChapter,removeChapter,offlineChapters,offlineEnabled} from './offline';
+import {WindowPrefetch,pageWindow} from './preload';
 import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
 import './motion.css';
-export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean;startPanel?:string}
+export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean;startPanel?:string;offline?:boolean}
 export async function startReader(options:ReaderOptions) {
 const ajv=new Ajv({allErrors:true}),validators={1:ajv.compile(schema),2:ajv.compile(schemaV2)};
 
@@ -55,7 +57,8 @@ const plane=new SourcePlane();
 const characterLayers=new CharacterLayers();
 const bubble=new BubbleOverlay(),overview=new PageOverview();
 const audio=new AudioTimeline(options.assetBase);
-const textures=new Map<string,Texture>();
+const preload=new WindowPrefetch<Texture>(url=>Assets.load<Texture>(url),async url=>{await Assets.unload(url);});
+const textures=preload.cache;
 let script:MotionScript,index=0,ready=false,loading=false,classic=false,auto=false,reduce=false,depth=true;
 let active:Sprite|null=null,previous:Rect|null=null,navigation=0,transition=0,pageFade=false;
 let transitionKind='cut',motionPreset='normal',fxKey='',shakeActive=false;
@@ -69,8 +72,17 @@ let polling=false,pollTimer=0,closed=false,processingError='';
 let sfxLevel=1;
 let gestures:ReaderGestures|null=null,glowingBubble:string|null=null,reviewData:Review|null=null;
 let heldAt=0,lastHoldMs=0;
-const fixSheet=options.series&&options.chapter&&!options.comparison?new FixSheet(options.series,options.chapter):null;
-window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);audio.pause();audio.music.cancel();void audio.context.close();},{once:true});
+const fixSheet=options.series&&options.chapter&&!options.comparison&&!options.offline?new FixSheet(options.series,options.chapter):null;
+if(options.series&&options.chapter&&!options.comparison){
+  const download=document.createElement('button'),remove=document.createElement('button'),note=document.createElement('span');
+  download.id='offline-save';remove.id='offline-remove';note.id='offline-status';note.setAttribute('role','status');
+  download.textContent='Save offline';remove.textContent='Remove offline';remove.hidden=true;
+  const refresh=async()=>{const saved=(await offlineChapters()).find(r=>r.series===options.series&&r.chapter===options.chapter);remove.hidden=!saved;download.textContent=saved?'Refresh offline copy':'Save offline';note.textContent=options.offline?'Reading saved offline copy':saved?`Saved offline · ${(saved.bytes/2**20).toFixed(1)} MiB`:'';};
+  download.onclick=async()=>{download.disabled=true;remove.disabled=true;try{await saveChapter(options.series!,options.chapter!,(done,total)=>{note.textContent=`Saving offline · ${done}/${total} assets`;});await refresh();}catch(e){note.textContent=String(e);}finally{download.disabled=!!options.offline||!!options.partial;remove.disabled=false;}};
+  remove.onclick=async()=>{remove.disabled=true;try{await removeChapter(options.series!,options.chapter!);await refresh();}catch(e){note.textContent=String(e);}finally{remove.disabled=false;}};
+  download.disabled=!!options.offline||!!options.partial||!offlineEnabled();download.title=offlineEnabled()?'Save a complete local copy':'Open with scripts/open-reader.ps1 to keep offline storage on D:';document.querySelector('footer')!.append(download,remove,note);void refresh().catch(e=>{note.textContent=String(e);});
+}
+window.addEventListener('pagehide',()=>{closed=true;clearTimeout(pollTimer);audio.pause();audio.music.cancel();characterLayers.destroy();void preload.close();void audio.context.close();},{once:true});
 
 function current() {const e=entries[index],page=script.pages[e.page] as Page;return {page,panel:page.panels[e.panel]};}
 function applyAudioLevels(){
@@ -111,8 +123,7 @@ async function show(next:number,play=false,replay=false) {
     const base=pageBases.get(page.id)??options.assetBase;
     audio.assetBase=base;
     const url=base+page.image;
-    let texture=textures.get(url);
-    if(!texture) {texture=await Assets.load<Texture>(url);textures.set(url,texture);}
+    const texture=await preload.acquire(url);
     if(token!==navigation) return;
     const scene=script.version===2?panel.scene:null;
     const [panelReady,music]=await Promise.all([audio.prepare(panel),audio.music.prepare(scene??null,script.version===2&&scene?script.scenes[scene].beds:[],base)]);
@@ -124,17 +135,15 @@ async function show(next:number,play=false,replay=false) {
     plane.prepare(texture,panel);if(plane.sprite)world.addChild(plane.sprite);
     if(!await characterLayers.prepare(texture,page,panel,base)||token!==navigation)return;
     world.addChild(characterLayers.container,bubble.graphic,overview.graphic);
-    // ±1 page cache; release old TextureSources explicitly. No models in reader.
-    for(const [key,value] of textures) {
-      const pageIndex=script.pages.findIndex(p=>(pageBases.get(p.id)??options.assetBase)+p.image===key);
-      if(Math.abs(pageIndex-entries[index].page)>1) {await Assets.unload(key);textures.delete(key);}
-    }
     if(token!==navigation)return;
     previous=oldRect&&entries[old].page===entries[next].page&&!replay?oldRect:null;
     pageFade=oldRect!==null&&entries[old].page!==entries[next].page&&!reduce;
     transitionKind=previous?script.pages[entries[old].page].panels[entries[old].panel].transition_out.type:pageFade?'fade':'cut';
     transition=reduce||replay?0:next===old+1?incomingTransition(script,next):previous&&transitionKind!=='cut'?script.pages[entries[old].page].panels[entries[old].panel].transition_out.dur:pageFade?.2:0;
     if(transition&&previous&&transitionKind!=='glide'&&oldTexture)previousWorld.addChild(new Sprite(oldTexture));
+    const oldUrl=oldTexture?[...textures].find(([,value])=>value===oldTexture)?.[0]:undefined;
+    preload.select(pageWindow(script.pages as Page[],entries[index].page).map(i=>(pageBases.get(script.pages[i].id)??options.assetBase)+script.pages[i].image),oldUrl&&previousWorld.children.length?[oldUrl]:[]);
+    void audio.prefetch(entries.slice(index,index+3).map(e=>({panel:(script.pages[e.page] as Page).panels[e.panel],base:pageBases.get(script.pages[e.page].id)??options.assetBase})));
     if(transition)glides++;
     ready=true;loading=false;switches++;
     flow?.sync(index);
@@ -156,7 +165,7 @@ async function togglePlay() {
   else await audio.play(current().panel,transition);
   updateHud();
 }
-function advance(delta:number) {if(classic)setOverview(false);void show(index+delta,true);}
+function advance(delta:number) {if(loading)return;if(classic)setOverview(false);void show(index+delta,true);}
 function setOverview(value:boolean){if(!ready)return;audio.pause();classic=value;$('classic').textContent=classic?'Motion view':'Original page';flow?.cancelInteraction();flow?.setEnabled(!classic&&(($('mode') as HTMLSelectElement).value==='flow'||(auto&&matchMedia('(max-width:650px)').matches)));updateHud();}
 function tap(x?:number){
   if(classic){setOverview(false);return;}
@@ -171,7 +180,7 @@ async function action(fn:()=>void|Promise<void>) {try{await audio.unlock();await
 $('play').onclick=()=>void action(togglePlay);
 $('next').onclick=()=>void action(()=>advance(1));
 $('prev').onclick=()=>void action(()=>advance(-1));
-$('replay').onclick=()=>void action(()=>show(index,true,true));
+$('replay').onclick=()=>void action(()=>{if(!loading)return show(index,true,true);});
 stage.onclick=e=>void action(()=>tap(e.clientX));
 stage.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();void action(()=>tap());}};
 $('mode').onchange=()=>{const mode=($('mode') as HTMLSelectElement).value;auto=mode==='auto'||mode==='silent';applyAudioLevels();flow?.setEnabled(mode==='flow'||(auto&&matchMedia('(max-width:650px)').matches));if(auto&&!audio.playing)void action(togglePlay);updateHud();};
@@ -228,6 +237,7 @@ async function init() {
   const speed=$('speed') as HTMLSelectElement;
   if(options.readingWpm&&!Array.from(speed.options).some(o=>o.value===String(options.readingWpm)))speed.add(new Option(`${options.readingWpm} wpm`,String(options.readingWpm)));
   speed.value=String(options.readingWpm??240);
+  speed.disabled=!!options.offline;
   depth=script.pages.some(p=>p.panels.some(panel=>(panel as Page['panels'][number]).layers?.length||panel.director.focus.some(f=>f.ref==='parallax-safe')));
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';
@@ -248,7 +258,7 @@ async function init() {
     lastHoldMs=performance.now()-heldAt;updateHud();
   },()=>void action(()=>{setOverview(false);return show(index,true,true);}),()=>flow?.cancelInteraction());
   stage.parentElement!.addEventListener('pointerdown',()=>{heldAt=performance.now();},{capture:true});
-  if(options.series&&options.chapter&&!options.comparison)void request<Review>(reviewUrl(options.series,options.chapter)).then(data=>{reviewData=data;}).catch(()=>{ /* Overview remains available when review is unavailable. */ });
+  if(options.series&&options.chapter&&!options.comparison&&!options.offline)void request<Review>(reviewUrl(options.series,options.chapter)).then(data=>{reviewData=data;}).catch(()=>{ /* Overview remains available when review is unavailable. */ });
   if(matchMedia('(max-width:650px)').matches){($('mode') as HTMLSelectElement).value='flow';flow.setEnabled(true);}
   reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;($('reduce') as HTMLInputElement).checked=reduce;
   app.ticker.add(()=>{
@@ -314,13 +324,14 @@ async function init() {
         if(auto&&ready&&!loading&&index===oldCount-1&&audio.offset>=audio.duration+transition&&index<entries.length-1)void show(index+1,true);
       }
       options.partial=info.partial;
+      if(document.getElementById('offline-save'))($('offline-save') as HTMLButtonElement).disabled=!!info.partial||!!options.offline||!offlineEnabled();
       if(ready)updateHud();
     }catch(e){processingError=String(e);if(ready)updateHud();}
     finally{polling=false;if(!closed&&options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);}
   }
   if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],worldTransform:[world.position.x,world.position.y,world.scale.x],glowingBubble,glowAlpha:bubble.graphic.alpha,reviewReady:!!reviewData,lastHoldMs,loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),...characterLayers.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,offline:!!options.offline,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],worldTransform:[world.position.x,world.position.y,world.scale.x],glowingBubble,glowAlpha:bubble.graphic.alpha,reviewReady:!!reviewData,lastHoldMs,loadedTextures:textures.size,prefetchedAudio:audio.prefetched.size,prefetchedAudioBytes:[...audio.prefetched.values()].reduce((n,b)=>n+b.length*b.numberOfChannels*4,0),decodedCurrentClips:audio.clips.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),...characterLayers.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }

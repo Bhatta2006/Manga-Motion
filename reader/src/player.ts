@@ -12,6 +12,19 @@ export class AudioTimeline {
   readonly output=this.context.createGain();
   readonly music=new SceneMusic(this.context,this.output);
   readonly clips=new Map<string,AudioBuffer>();
+  readonly prefetched=new Map<string,AudioBuffer>();private prefetchGeneration=0;private prefetchUrls:string[]=[];private prefetchActive=false;private downloads=new Map<string,Promise<AudioBuffer>>();
+  private async decoded(url:string){
+    if(this.prefetched.has(url))return this.prefetched.get(url)!;
+    let task=this.downloads.get(url);if(!task){task=(async()=>{const response=await fetch(url);if(!response.ok)throw Error(String(response.status));return this.context.decodeAudioData(await response.arrayBuffer());})().finally(()=>this.downloads.delete(url));this.downloads.set(url,task);}return task;
+  }
+  async prefetch(panels:{panel:Panel;base:string}[]){
+    ++this.prefetchGeneration;this.prefetchUrls=[...new Set(panels.slice(0,3).flatMap(({panel,base})=>panel.timeline.flatMap(e=>e.type==='line'?[base+e.audio]:e.type==='sfx'?[base+e.file]:[])))].slice(0,32);
+    for(const key of this.prefetched.keys())if(!this.prefetchUrls.includes(key))this.prefetched.delete(key);
+    if(this.prefetchActive)return;this.prefetchActive=true;const attempted=new Set<string>();let generation=this.prefetchGeneration;
+    try{while(true){if(generation!==this.prefetchGeneration){generation=this.prefetchGeneration;attempted.clear();}const url=this.prefetchUrls.find(u=>!this.prefetched.has(u)&&!attempted.has(u));if(!url)break;attempted.add(url);
+      try{const buffer=await this.decoded(url);if(!this.prefetchUrls.includes(url))continue;const bytes=[...this.prefetched.values()].reduce((n,b)=>n+b.length*b.numberOfChannels*4,0);if(!this.prefetched.has(url)&&bytes+buffer.length*buffer.numberOfChannels*4<=32*2**20)this.prefetched.set(url,buffer);}catch{/* Current-panel preparation exposes an actual missing clip. */}
+    }}finally{this.prefetchActive=false;}
+  }
   sources:AudioBufferSourceNode[]=[];
   private sourceGains=new Map<AudioBufferSourceNode,GainNode>();
   failures:string[]=[];
@@ -27,9 +40,7 @@ export class AudioTimeline {
       const path=e.type==='line'?e.audio:e.file;
       if (this.clips.has(path)) return;
       try {
-        const response=await fetch(this.assetBase+path);
-        if(!response.ok) throw Error(`${response.status}`);
-        const buffer=await this.context.decodeAudioData(await response.arrayBuffer());
+        const buffer=await this.decoded(this.assetBase+path);
         if(token===this.generation) this.clips.set(path,buffer);
       } catch(error) { if(token===this.generation) this.failures.push(`Audio unavailable: ${path}`); }
     }));

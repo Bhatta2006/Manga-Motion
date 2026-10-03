@@ -1,5 +1,7 @@
 import './style.css';
 import {playback} from './api';
+import {registerOffline,offlineChapters} from './offline';
+if(import.meta.env.PROD)void registerOffline().catch(()=>{});
 
 async function boot(){
   const params=new URLSearchParams(location.search);
@@ -14,9 +16,10 @@ async function boot(){
       info.script_url=base+'/motionscript.json';info.asset_base=base+'/assets/';info.partial=false;
     }
     const {startReader}=await import('./reader');
-    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:params.has('comparison')?'Comparison sample':`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages,comparison:params.has('comparison'),startPanel:params.get('at')??undefined});return;
+    await startReader({scriptUrl:info.script_url,assetBase:info.asset_base,title:params.has('comparison')?'Comparison sample':`${series} / ${chapter}`,library:true,series,chapter,readingWpm:info.reading_wpm,partial:info.partial,totalPages:info.total_pages,comparison:params.has('comparison'),startPanel:params.get('at')??undefined,offline:info.offline});return;
   }
-  const health=await fetch('/api/health');
+  const health=await fetch('/api/health').catch(async e=>{if((await offlineChapters()).length){const {startLibrary}=await import('./library');await startLibrary();return null;}throw e;});
+  if(!health)return;
   if(health.status===404){
     const {startReader}=await import('./reader');
     await startReader({scriptUrl:'/chapter/motionscript.json',assetBase:'/chapter/',title:'Motion study'});

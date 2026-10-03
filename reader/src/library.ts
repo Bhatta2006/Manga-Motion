@@ -16,6 +16,7 @@ export async function startLibrary(){
   <div class="library-heading"><h2>Chapters</h2><span id="library-count"></span></div><p id="library-error" role="status"></p><div id="chapter-list" class="chapter-list" aria-live="polite"></div></main>`;
   const list=document.getElementById('chapter-list')!,error=document.getElementById('library-error')!;
   let timer:number|undefined,stopped=false,rendered='';
+  let offline=false;
   window.addEventListener('pagehide',()=>{stopped=true;clearTimeout(timer);},{once:true});
   function card(chapter:Chapter){
     const article=document.createElement('article');article.className='chapter-card';article.dataset.series=chapter.series;article.dataset.chapter=chapter.chapter;
@@ -32,12 +33,12 @@ export async function startLibrary(){
       const message=document.createElement('p');message.className='job-error';message.textContent=job.error??'Unknown processing error';article.append(message);
       const retry=document.createElement('button');retry.textContent='Retry processing';retry.onclick=async()=>{retry.disabled=true;try{await retryJob(job.id);rendered='';await refresh();}catch(e){error.textContent=String(e);retry.disabled=false;}};actions.append(retry);
     }
-    if(chapter.playable){const review=document.createElement('a');review.className='review-link';review.textContent='Review';review.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter,review:'1'});actions.append(review);}
+    if(chapter.playable&&!offline){const review=document.createElement('a');review.className='review-link';review.textContent='Review';review.href='/?'+new URLSearchParams({series:chapter.series,chapter:chapter.chapter,review:'1'});actions.append(review);}
     article.append(actions);return article;
   }
   async function refresh(){
     clearTimeout(timer);
-    try{const data=await chapters();error.textContent=data.worker_error?`Processing service needs attention: ${data.worker_error}`:'';const digest=JSON.stringify(data.chapters);if(digest!==rendered){rendered=digest;list.replaceChildren(...data.chapters.map(card));if(!data.chapters.length){const empty=document.createElement('p');empty.className='empty-library';empty.textContent='Your Library is empty. Import your first chapter above.';list.append(empty);}document.getElementById('library-count')!.textContent=`${data.chapters.length} chapters`;}}
+    try{const data=await chapters();offline=!!data.offline;(document.getElementById('import-submit') as HTMLButtonElement).disabled=offline;error.textContent=offline?'Offline · saved chapters only':data.worker_error?`Processing service needs attention: ${data.worker_error}`:'';const digest=JSON.stringify([offline,data.chapters]);if(digest!==rendered){rendered=digest;list.replaceChildren(...data.chapters.map(card));if(!data.chapters.length){const empty=document.createElement('p');empty.className='empty-library';empty.textContent='Your Library is empty. Import your first chapter above.';list.append(empty);}document.getElementById('library-count')!.textContent=`${data.chapters.length} chapters`;}}
     catch(e){error.textContent=`Could not refresh Library: ${String(e)}`;}
     if(!stopped)timer=window.setTimeout(()=>void refresh(),2000);
   }
