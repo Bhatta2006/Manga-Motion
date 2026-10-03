@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 import numpy as np
-from pipeline.layers.masks import inverse_envelope,uncovered,swept_guard,dilate,prepare_mask
+from pipeline.layers.masks import inverse_envelope,uncovered,swept_guard,dilate,prepare_mask,save_candidate
 from pipeline.adapters.segmenter import panel_for,MaskCache
 from pipeline.layers.prepare import LayerCache
 from pipeline.store import ChapterStore,write_json
@@ -26,6 +26,16 @@ class LayerTests(unittest.TestCase):
         rgb=np.full((80,80,3),255,dtype='uint8');raw=np.zeros((20,20),bool);raw[4:16,4:16]=True;rgb[34:46,34:46]=0
         prepared,reason=prepare_mask(rgb,raw,[30,30,50,50],[0,0,80,80],[],[30,30,50,50]);self.assertIsNone(reason);self.assertEqual(prepared['audit']['max_uncovered_pixels'],0)
         _,reason=prepare_mask(rgb,raw,[30,30,50,50],[0,0,80,80],[[32,32,49,49]],[30,30,50,50]);self.assertEqual(reason,'motion_intersects_protected_text')
+    def test_real_transform_producer_agrees_with_consumer_numeric_hash(self):
+        import subprocess,json
+        with tempfile.TemporaryDirectory(dir=Path('D:/Motion Manga/.runtime/tmp')) as tmp:
+            store=ChapterStore(Path(tmp),'test','chapter');store.asset('layers').mkdir(parents=True)
+            transform={'source_bbox':[10,10,14,14],'anchor':[.5,1.0],'poses':[{'u':0,'scale':1,'offset':[0,0]},{'u':1,'scale':1.01,'offset':[0,0]}]}
+            layer=save_candidate(store,{'id':'p','page_sha256':'0'*64},{'id':'panel'},{'id':'char'},{**transform,'mask_array':np.ones((4,4),bool)})
+            integer_anchor={**transform,'anchor':[.5,1]}
+            # Same values used by JSON.stringify; the former Python 1.0 hash
+            # disagreed and is intentionally excluded from transport.
+            self.assertEqual(layer['safety']['transform_sha256'],object_hash(integer_anchor));self.assertNotEqual(layer['safety']['transform_sha256'],object_hash(transform))
     def test_mask_asset_and_candidate_cache_tampering_cause_misses(self):
         with tempfile.TemporaryDirectory(dir=Path('D:/Motion Manga/.runtime/tmp')) as tmp:
             store=ChapterStore(Path(tmp),'test','chapter');asset=store.asset('layers/test.png');asset.parent.mkdir(parents=True);asset.write_bytes(b'mask')

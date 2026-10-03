@@ -8,12 +8,15 @@ all intervening poses. Added alpha selects existing source RGB, never new art.
 A clean paper boundary and continuous swept text/panel guard remain required.
 """
 import math
+import json
+import subprocess
+from pathlib import Path
 import numpy as np
 from PIL import Image
 from pipeline.cache import page_sha256
 from pipeline.ingest.hashes import object_hash
 
-REVISION='source-inverse-envelope-v1'
+REVISION='source-inverse-envelope-js-hash-v2'
 SCALE=1.035
 
 def dilate(mask,radius):
@@ -102,6 +105,11 @@ def save_candidate(store,page,panel,raw,prepared):
     rgba=np.full((*prepared['mask_array'].shape,4),255,dtype='uint8');rgba[:,:,3]=prepared['mask_array']*255
     name=f'layers/{page["page_sha256"]}-{panel["id"]}-{raw["id"]}-collar.png';path=store.asset(name);Image.fromarray(rgba,'RGBA').save(path)
     transform={k:prepared[k] for k in ('source_bbox','anchor','poses')}
+    # Python writes integral floats as 1.0 while JSON.stringify writes 1.
+    # Delegate the boundary hash to the exact consumer canonicalizer.
+    root=Path(__file__).resolve().parents[2]
+    hashed=subprocess.run(['node',str(root/'reader/tools/hash-transform.mjs')],input=json.dumps(transform,allow_nan=False),text=True,encoding='utf-8',capture_output=True,timeout=10,check=True).stdout.strip()
+    if len(hashed)!=64 or any(c not in '0123456789abcdef' for c in hashed):raise ValueError('Invalid canonical transform hash')
     return {'id':f'{page["id"]}_{raw["id"]}','kind':'character','source_page':page['id'],**transform,'mask':name,'depth':.7,
             'safety':{'method':'conservative-mask-envelope-v1','source_sha256':page['page_sha256'],'mask_sha256':page_sha256(path),
-                      'transform_sha256':object_hash(transform),'max_uncovered_pixels':0}}
+                      'transform_sha256':hashed,'max_uncovered_pixels':0}}
