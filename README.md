@@ -119,3 +119,18 @@ python -m pipeline.build_motion --series my-series --chapter chapter-01
 `--enable` with no IDs selects none. Stale geometry/masks require re-preparation
 and inspection. Rejected regions remain flat. See `reports/M4c1.md` and
 `reports/M4c2.md` for measured feasibility, regression commands and limits.
+
+## Offline reading
+
+With the built API running on port 5174, run `.\scripts\open-reader.ps1` yourself
+to open installed Edge with its profile/disk cache on D:. Open a complete chapter
+and choose **Save offline**. The copy includes original pages, scene sound/music
+and selected masks; failed saves leave the previous copy usable. Return to that
+same profile to read offline. **Remove offline** clears the browser copy.
+
+Ordinary browser views do not initiate offline storage automatically. Offline
+review/timing edits need the service online. Storage limits: 512 MiB saved chapters,
+32 MiB per asset, browser quota checked. Source/model libraries remain on D:.
+The API remains loopback-only. Mobile viewport testing does not imply remote
+phone access. See `reports/M5a.md`; `node reader/tests/offline-smoke.mjs` exercises
+real offline reload/recovery/audio/navigation in a D-only installed-Edge profile.

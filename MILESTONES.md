@@ -299,6 +299,8 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M5a — Prefetch and offline PWA (≤2 days)
 
+**Status:** technical offline/prefetch checks pass on the private five-page set; D-profile launcher, verified atomic copies, bounded windows, actual offline audio/layer/Library and recovery in `reports/M5a.md`. Actual-phone install/responsiveness and larger chapters remain acceptance work.
+
 - **Goal:** make reading responsive and available without network after processing.
 - **Deliverables:** ±2-page texture prefetch/eviction, next-two-panel audio prefetch, service-worker chapter cache, offline status.
 - **Files/modules:** `reader/src/{preload.ts,offline.ts,sw.ts}`, `reader/public/manifest.webmanifest`, `reports/M5a.md`.
@@ -352,3 +354,5 @@ After M4a technical delivery, **11 implementation slices remain**: M4b/c1/c2 (3)
 After M4b technical delivery, **10 implementation slices remain**: M4c1/c2 (2), M5a–d (4), M2a–d (4). Real voice guidance, actual-device trials and earlier quality gates remain acceptance work. See `reports/M4b.md`.
 
 After selective M4c1/c2 technical delivery, **8 implementation slices remain**: M5a–d (4) and deferred M2a–d (4). **Wider character-depth coverage/refinement is still required**, alongside earlier camera refinements, independent quality, user ratings, actual-phone and real-volume trials. A slice's technical implementation does not complete its subjective acceptance gates.
+
+After M5a technical delivery, **7 implementation slices remain**: M5b/c/d (3) and deferred M2a–d (4), plus the explicitly outstanding wider-depth, camera and final quality/device/volume acceptance work.
