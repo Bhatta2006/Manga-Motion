@@ -98,3 +98,24 @@ page with the current panel outlined. Tap the overview to return, or use Origina
 page / Escape. Flow swipes select next/previous; two-finger tap replays. In Tap
 paced mode, side taps follow chapter direction; a playing center tap finishes
 the scene before the following tap advances. Voice-related fixes remain pending.
+
+## Selective character depth
+
+The private golden chapter has one inspected upper-character cutout on page 5,
+panel 000. Open `/?series=golden-m1d&chapter=chapter&at=p0005_panel_000`, press
+Play and compare Parallax on/off. The reader masks the original texture; no art
+RGB is generated. Broader full-character coverage remains work in progress.
+
+```powershell
+# Read pipeline/layers/DEPENDENCIES.md first; all installs/downloads go to D.
+. .\scripts\enter-runtime.ps1
+.\scripts\install-segmenter.ps1
+python -m pipeline.layers.prepare --series my-series --chapter chapter-01 --report reports/depth-private.json
+# Inspect accepted candidates and poses before selecting their IDs.
+python -m pipeline.layers.publish --series my-series --chapter chapter-01 --enable CANDIDATE_ID
+python -m pipeline.build_motion --series my-series --chapter chapter-01
+```
+
+`--enable` with no IDs selects none. Stale geometry/masks require re-preparation
+and inspection. Rejected regions remain flat. See `reports/M4c1.md` and
+`reports/M4c2.md` for measured feasibility, regression commands and limits.

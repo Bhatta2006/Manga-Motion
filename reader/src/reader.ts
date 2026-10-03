@@ -19,6 +19,7 @@ import {activeBubble,hitText,tapDirection} from './bubble-state.js';
 import {reviewUrl} from './review-data';
 import type {Review} from './review-data';
 import {request} from './api';
+import {CharacterLayers} from './character-layers';
 import {styledCamera,sceneEffects,shakeEligible,protectedShake} from './motion-settings.js';
 import './motion.css';
 export interface ReaderOptions {scriptUrl:string;assetBase:string;title:string;library?:boolean;series?:string;chapter?:string;readingWpm?:number|null;partial?:boolean;totalPages?:number;comparison?:boolean;startPanel?:string}
@@ -51,6 +52,7 @@ const world=new Container();
 const previousWorld=new Container(),previousMask=new Graphics().rect(0,0,1,1).fill(0xffffff),effectsOverlay=new Graphics();
 const frameMask=new Graphics().rect(0,0,1,1).fill(0xffffff);
 const plane=new SourcePlane();
+const characterLayers=new CharacterLayers();
 const bubble=new BubbleOverlay(),overview=new PageOverview();
 const audio=new AudioTimeline(options.assetBase);
 const textures=new Map<string,Texture>();
@@ -86,8 +88,8 @@ function updateHud() {
   $('play').textContent=audio.playing?'Pause':'Play';
   ($('prev') as HTMLButtonElement).disabled=index===0;
   ($('next') as HTMLButtonElement).disabled=index===entries.length-1;
-  status.textContent=plane.sprite?'Source-only parallax available · visual preview':'Camera motion · parallax gated: no safe foreground region';
-  error.textContent=[...audio.failures,...audio.music.failures,current().panel.layers?.length?'Character layers are not supported by this reader yet; showing original flat art.':'',processingError].filter(Boolean).join(' · ');
+  status.textContent=characterLayers.diagnostics().characterLayers?'Source-only character cutout · restrained depth':plane.sprite?'Source-only parallax available · visual preview':'Camera motion · no verified cutout on this panel';
+  error.textContent=[...audio.failures,...audio.music.failures,...characterLayers.failures,processingError].filter(Boolean).join(' · ');
   document.querySelector('.study')!.textContent=options.partial?`${script.pages.length}/${options.totalPages} pages ready`:`${script.pages.length} pages · original art`;
   const mode=($('mode') as HTMLSelectElement).value;
   stage.setAttribute('aria-label',mode==='tap'?'Advance to next panel':'Pause or resume scene');
@@ -97,6 +99,7 @@ function updateHud() {
 async function show(next:number,play=false,replay=false) {
   if(next<0||next>=entries.length) return;
   gestures?.cancel();
+  characterLayers.destroy();
   const token=++navigation;
   const old=index;
   const oldRect=ready&&!classic?rectNow():null;
@@ -119,7 +122,8 @@ async function show(next:number,play=false,replay=false) {
     previousWorld.removeChildren().forEach(child=>child.destroy({texture:false,textureSource:false}));
     active=new Sprite(texture);world.addChild(active);
     plane.prepare(texture,panel);if(plane.sprite)world.addChild(plane.sprite);
-    world.addChild(bubble.graphic,overview.graphic);
+    if(!await characterLayers.prepare(texture,page,panel,base)||token!==navigation)return;
+    world.addChild(characterLayers.container,bubble.graphic,overview.graphic);
     // ±1 page cache; release old TextureSources explicitly. No models in reader.
     for(const [key,value] of textures) {
       const pageIndex=script.pages.findIndex(p=>(pageBases.get(p.id)??options.assetBase)+p.image===key);
@@ -224,7 +228,7 @@ async function init() {
   const speed=$('speed') as HTMLSelectElement;
   if(options.readingWpm&&!Array.from(speed.options).some(o=>o.value===String(options.readingWpm)))speed.add(new Option(`${options.readingWpm} wpm`,String(options.readingWpm)));
   speed.value=String(options.readingWpm??240);
-  depth=script.pages.some(p=>p.panels.some(panel=>panel.director.focus.some(f=>f.ref==='parallax-safe')));
+  depth=script.pages.some(p=>p.panels.some(panel=>(panel as Page['panels'][number]).layers?.length||panel.director.focus.some(f=>f.ref==='parallax-safe')));
   ($('depth') as HTMLInputElement).checked=depth;($('depth') as HTMLInputElement).disabled=!depth;
   $('depth').title=depth?'Source-only foreground motion':'No safe foreground region on these pages';
   await app.init({resizeTo:stage,background:0x171d1f,preference:'webgl',powerPreference:'low-power',antialias:false,resolution:Math.min(devicePixelRatio,2),autoDensity:true});
@@ -270,6 +274,7 @@ async function init() {
     const nextFxKey=[app.screen.width,app.screen.height,fx.flash,fx.vignette].join(',');
     if(nextFxKey!==fxKey){fxKey=nextFxKey;effectsOverlay.clear();if(fx.flash)effectsOverlay.rect(0,0,app.screen.width,app.screen.height).fill({color:0xffffff,alpha:fx.flash});vignette.style.opacity=String(fx.vignette*4);}
     plane.update(clamp((time-transition)/audio.duration),depth&&!reduce&&!classic);
+    characterLayers.update(clamp((time-transition)/audio.duration),panel,depth&&!reduce&&!classic);
     overview.update(panel.bbox,world.scale.x,classic);
     const activeBubbleState=activeBubble(panel,time-transition,audio.clips);
     glowingBubble=!classic&&activeBubbleState.bbox?activeBubbleState.line!.bubble:null;
@@ -300,6 +305,10 @@ async function init() {
         const oldCount=entries.length;
         for(const page of next.pages.slice(script.pages.length))pageBases.set(page.id,info.asset_base);
         script=next;entries=script.pages.flatMap((p,page)=>p.panels.map((_,panel)=>({page,panel})));
+        const depthControl=$('depth') as HTMLInputElement;
+        if(depthControl.disabled&&script.pages.some(p=>p.panels.some(panel=>(panel as Page['panels'][number]).layers?.length||panel.director.focus.some(f=>f.ref==='parallax-safe')))){
+          depthControl.disabled=false;depthControl.checked=true;depth=true;depthControl.title='Source-only foreground motion';
+        }
         for(const bus of ['music','ambience'] as const)if(script.version===2&&Object.values(script.scenes).some(s=>s.beds.some(b=>b.bus===bus))){const control=$(`${bus}-enable`) as HTMLInputElement;if(control.disabled){control.disabled=false;control.checked=true;applyAudioLevels();}}
         flow?.setCount(entries.length);flow?.sync(index);options.scriptUrl=info.script_url;
         if(auto&&ready&&!loading&&index===oldCount-1&&audio.offset>=audio.duration+transition&&index<entries.length-1)void show(index+1,true);
@@ -311,7 +320,7 @@ async function init() {
   }
   if(options.partial)pollTimer=window.setTimeout(()=>void refreshPages(),1500);
   // Read-only diagnostics for reproducible browser acceptance measurements.
-  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],worldTransform:[world.position.x,world.position.y,world.scale.x],glowingBubble,glowAlpha:bubble.graphic.alpha,reviewReady:!!reviewData,lastHoldMs,loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
+  Object.defineProperty(window,'mangaMotionDiagnostics',{get:()=>({ready,loading,index,pages:script.pages.length,panels:entries.length,partial:options.partial,playing:audio.playing,time:audio.time(),duration:audio.duration+transition,classic,reduce,depth,auto,motionPreset,shakeActive,transitionKind,renderedRect,viewport:[app.screen.width,app.screen.height],worldTransform:[world.position.x,world.position.y,world.scale.x],glowingBubble,glowAlpha:bubble.graphic.alpha,reviewReady:!!reviewData,lastHoldMs,loadedTextures:textures.size,frameTimes:[...frameTimes],visualClockSampleErrorMs:[...clockErrors],switches,glides,audioState:audio.context.state,sfxMuted:sfxLevel===0,sfxLevel,sfxRenderedGain:audio.sfxGain.gain.value,sfxRms:audio.sfxRms(),...audio.music.diagnostics(),...characterLayers.diagnostics(),parallaxAvailable:!!plane.sprite,...metrics})});
 }
 await init().catch(e=>{error.textContent=String(e);metrics.errors.push(String(e));status.textContent='Preview unavailable';});
 }

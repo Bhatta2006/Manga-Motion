@@ -11,7 +11,7 @@ class MusicSnapshotTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory(dir=os.environ['TEMP'])
         self.store=ChapterStore(Path(self.temp.name)/'library','golden-m1d','chapter')
         source=ROOT/'library/golden-m1d/chapter'
-        for name in ('pages','sfx','music','ambience'):shutil.copytree(source/name,self.store.asset(name))
+        for name in ('pages','sfx','music','ambience','layers'):shutil.copytree(source/name,self.store.asset(name))
         self.script=read_json(source/'motionscript.json')
     def tearDown(self):self.temp.cleanup()
     def test_verified_beds_serve_only_bound_hashes(self):

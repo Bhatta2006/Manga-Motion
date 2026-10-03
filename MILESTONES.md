@@ -273,6 +273,8 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 
 ### M4c1 — Source-only character masks and occlusion feasibility (≤2 days)
 
+**Status:** selective preparation demonstrated: 30 masks, one eligible upper-character candidate, 29 explicit rejections; measured 808 MiB device peak. See `reports/M4c1.md`. Wider full-character coverage remains open.
+
 - **Goal:** find real panels that support clean layered character depth for F01.
 - **Deliverables:** verified/pinned segmentation adapter, original-pixel masks/layer assets, per-pose coverage/occlusion proof, text-plane protection and visual audits. No inpainting or invented background.
 - **Files/modules:** `pipeline/adapters/segmenter.py`, `pipeline/layers/{masks.py,integrity.py}`, `library/<series>/<chapter>/cache/layers.json`, `reports/M4c1.md`.
@@ -282,6 +284,8 @@ M3a engineering checks completed; semantic accuracy remains explicitly unverifie
 - **Known risks:** hidden background is absent from scans; a mask alone cannot recover it. Original artist layers may be needed for some scenes.
 
 ### M4c2 — Pop-out depth rendering and user evaluation (≤2 days)
+
+**Status:** selective renderer/publication and automated integrity/fallback checks verified in `reports/M4c2.md`. One page-5 upper-character cutout moves independently; broad final depth, actual-phone evidence and ≥4/5 user ratings remain open.
 
 - **Goal:** characters visibly feel lifted from the page while remaining comfortable and faithful.
 - **Deliverables:** foreground/background depth planes, bounded differential motion and perspective/scale, camera-linked motion, optional touch interaction, Reduce motion and camera-only fallback; real-panel depth evaluation.
@@ -346,3 +350,5 @@ Latest authorization removes intermediate milestone approval gates. MotionScript
 After M4a technical delivery, **11 implementation slices remain**: M4b/c1/c2 (3), M5a–d (4), M2a–d (4). M4a user timing/re-voice and earlier quality/device gates remain acceptance work.
 
 After M4b technical delivery, **10 implementation slices remain**: M4c1/c2 (2), M5a–d (4), M2a–d (4). Real voice guidance, actual-device trials and earlier quality gates remain acceptance work. See `reports/M4b.md`.
+
+After selective M4c1/c2 technical delivery, **8 implementation slices remain**: M5a–d (4) and deferred M2a–d (4). **Wider character-depth coverage/refinement is still required**, alongside earlier camera refinements, independent quality, user ratings, actual-phone and real-volume trials. A slice's technical implementation does not complete its subjective acceptance gates.

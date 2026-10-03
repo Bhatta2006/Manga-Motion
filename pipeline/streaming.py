@@ -15,6 +15,7 @@ from pipeline.motion.timing import PACING_REVISION, READING_KINDS, EXCLUDED_KIND
 from pipeline.motion.serialize import validate_contract
 from pipeline.store import read_json, write_json
 from pipeline.review.corrections import load as load_corrections,effective_page
+from pipeline.layers.publish import attach as attach_layers
 
 
 def streaming_record(store,job_id=None):
@@ -32,6 +33,7 @@ class StreamingPublisher:
         self.store,self.manifest,self.validator=store,manifest,validator
         self.import_hash=object_hash(manifest);self.rate=configured_rate(store)
         self.job_id=job_id
+        self.layer_state=object_hash(read_json(store.asset('layer-enabled.json')))
         analysis=read_json(store.asset('analysis.json'))
         self.corrections=load_corrections(store,analysis) if analysis else {'pages':{}}
         labels_path=store.asset('pacing-labels.json');labels=read_json(labels_path)
@@ -40,7 +42,7 @@ class StreamingPublisher:
         self.labels=(labels or {}).get('pages',{})
         if not isinstance(self.labels,dict):raise ValueError('Invalid pacing labels')
         if set(self.labels)-{p['page_sha256'] for p in manifest['pages']}:raise ValueError('Unknown pacing label page')
-        self.compilation_id=object_hash({'rate':self.rate,'labels':self.labels,'corrections':self.corrections,'revision':CameraAdapter.revision,'music_revision':MusicAdapter(store).revision,'contract_version':2})
+        self.compilation_id=object_hash({'rate':self.rate,'labels':self.labels,'corrections':self.corrections,'layers':self.layer_state,'revision':CameraAdapter.revision,'music_revision':MusicAdapter(store).revision,'contract_version':2})
         retained=streaming_record(store,job_id)
         self.retained=retained if retained and retained.get('compilation_id')==self.compilation_id else None
         self.pending={};self.done=[];self.compiled=[];self.audit=[];self.music=[]
@@ -85,6 +87,7 @@ class StreamingPublisher:
             script={'version':1,'chapter':f'{self.store.series}/{self.store.chapter}',
                     'direction':self.manifest['settings']['direction'],'characters':{},'pages':candidate}
             script=attach_music(script,self.music+music)
+            script=attach_layers(script,self.store,self.layer_state)
             self.validator(script)
             # Recheck all prefix assets: earlier bytes cannot be changed unnoticed.
             for earlier in self.manifest['pages'][:len(candidate)]:

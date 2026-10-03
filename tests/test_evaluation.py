@@ -11,7 +11,7 @@ class EvaluationTests(unittest.TestCase):
         source=Path(__file__).resolve().parents[1]/'library/golden-m1d/chapter'
         with tempfile.TemporaryDirectory(dir=os.environ['TEMP']) as tmp:
             library=Path(tmp)/'library';store=ChapterStore(library,'golden-m1d','chapter')
-            for directory in ('pages','sfx','music','ambience'):
+            for directory in ('pages','sfx','music','ambience','layers'):
                 if (source/directory).is_dir():shutil.copytree(source/directory,store.asset(directory))
             shutil.copyfile(source/'motionscript.json',store.asset('motionscript.json'))
             original=read_json(store.asset('motionscript.json'));result=prepare(library,'golden-m1d','chapter')
@@ -22,6 +22,8 @@ class EvaluationTests(unittest.TestCase):
                 self.assertFalse(any(label in sample['url'] for label in ('static','fixed','directed')))
                 digest=sample['url'].split('snapshot=')[1].split('&')[0];snapshots.add(digest)
                 script=read_snapshot(store,digest)['script'];panels=[p for page in script['pages'] for p in page['panels']]
+                condition=read_json(store.asset(f'cache/evaluation-{result["trial"]}.json'))['conditions'][sample['label']]['condition']
+                self.assertEqual(sum(len(p.get('layers',[])) for p in panels),sum(len(p.get('layers',[])) for p in original_panels) if condition=='directed' else 0)
                 self.assertEqual([p['image'] for p in script['pages']],[p['image'] for p in original['pages']])
                 for before,after in zip(original_panels,panels):
                     self.assertEqual([e for e in before['timeline'] if e['type']!='camera'],[e for e in after['timeline'] if e['type']!='camera'])

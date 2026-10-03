@@ -49,6 +49,12 @@ class StreamingTests(unittest.TestCase):
         directed=read_json(source/'cache/director.json');write_json(self.store.asset('cache/director.json'),directed)
         for name in ('pacing-labels.json',):
             if (source/name).exists():shutil.copyfile(source/name,self.store.asset(name))
+        # Carry the actual source-bound, visually inspected cutout into both
+        # consumers; this verifies enriched v2 parity, not just flat transport.
+        if (source/'layer-enabled.json').exists():
+            shutil.copyfile(source/'layer-enabled.json',self.store.asset('layer-enabled.json'))
+            shutil.copyfile(source/'cache/layer-candidates.json',self.store.asset('cache/layer-candidates.json'))
+            shutil.copytree(source/'layers',self.store.asset('layers'))
         publisher=StreamingPublisher(self.store,self.manifest)
         by_hash={p['page_sha256']:p for p in directed['pages']}
         for page in self.analysis['pages']:publisher.publish({**page,**by_hash[page['page_sha256']]})

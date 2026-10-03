@@ -66,6 +66,12 @@ def snapshot(store: ChapterStore, script=None):
             for layer in panel.get('layers',[]):
                 if assets[layer['mask']]!=layer['safety']['mask_sha256'] or assets[page['image']]!=layer['safety']['source_sha256']:
                     raise ValueError('Layer source/mask hash mismatch')
+                from PIL import Image
+                with Image.open(checked_asset(store,layer['mask'])) as mask:
+                    box=layer['source_bbox']
+                    if mask.format!='PNG' or mask.size!=(box[2]-box[0],box[3]-box[1]) or ('A' not in mask.getbands() and 'transparency' not in mask.info):
+                        raise ValueError('Layer mask must be PNG alpha matching the source crop')
+                    mask.verify()
     record = {'script': script, 'assets': assets}
     record['checksum'] = object_hash(record)
     write_json(path, record)

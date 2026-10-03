@@ -24,6 +24,7 @@ from pipeline.motion.serialize import validate_contract
 from pipeline.runtime.scheduler import StageScheduler, StageExecutionError
 from pipeline.store import ChapterStore, read_json, write_json
 from pipeline.review.corrections import load as load_corrections,effective_page
+from pipeline.layers.publish import attach as attach_layers
 
 
 def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, duration=2.0,
@@ -33,6 +34,7 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         raise ImportFailure('Dot-source scripts/enter-runtime.ps1; runtime must exist on D:')
     with nullcontext() if locked else store.lock():
         started = time.perf_counter()
+        layer_state=object_hash(read_json(store.asset('layer-enabled.json')))
         manifest = read_json(store.asset('import.json'))
         analysis = read_json(store.asset('analysis.json'))
         if not manifest or manifest.get('import_manifest_version') != 1 or not analysis or analysis.get('analysis_version') != 1:
@@ -92,6 +94,7 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         music,music_stage=prepare_music(store,[{'id':p['id'],**records[p['page_sha256']]} for p in analysis['pages']],
                            [store.asset(p['image']) for p in analysis['pages']],runtime,progress)
         script=attach_music(script,music)
+        script=attach_layers(script,store,layer_state)
         validation_started = time.perf_counter()
         validation = validator(script)
         validation_seconds = time.perf_counter() - validation_started
@@ -100,6 +103,7 @@ def build_motion(library: Path, series: str, chapter: str, runtime: Path, *, dur
         for digest, asset in unique.items():
             if page_sha256(asset) != digest:
                 raise ImportFailure(f'Source changed during compilation: {asset.name}')
+        if object_hash(read_json(store.asset('layer-enabled.json')))!=layer_state:raise ImportFailure('Enabled layers changed during compilation')
         # No partial contract is published; previous valid output survives any failure above.
         write_json(store.asset('cache/camera-audit.json'), {'revision': CameraAdapter.revision, 'pages': audits,
                    'reading_wpm':rate, 'script_hash':object_hash(script)})

@@ -1,4 +1,4 @@
-"""Prepare anonymous, time/audio-matched v1 static/fixed/directed comparisons."""
+"""Prepare anonymous, time/audio-matched static/fixed/directed comparisons."""
 import argparse,copy,json,random,secrets
 from pathlib import Path
 from pipeline.store import ChapterStore,read_json,write_json
@@ -20,6 +20,8 @@ def prepare(library,series,chapter):
             for page in script['pages']:
                 for index,panel in enumerate(page['panels']):
                     if kind=='directed':continue
+                    # Static/fixed baselines must not inherit directed character motion.
+                    panel.pop('layers',None)
                     cameras=[e for e in panel['timeline'] if e['type']=='camera'];end=max(e['t']+e['dur'] for e in cameras)
                     if kind=='static':
                         full=[0,0,*page['size']];motion=[{'type':'camera','t':0,'move':'hold','from':full,'to':full,'dur':end,'ease':'linear'}]
